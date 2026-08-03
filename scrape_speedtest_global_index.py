@@ -7,11 +7,10 @@ https://www.speedtest.net/global-index
 Extracts both Mobile and Fixed Broadband tables with:
   - Rank, Country, Download speed (Mbps), Rank change
 
-Uses Playwright with stealth context & persistent profiles to store Cloudflare clearance cookies.
+Uses DrissionPage to bypass Cloudflare Turnstile anti-bot automatically.
 
 Dependencies (install with pip):
-    pip install playwright playwright-stealth beautifulsoup4
-    python -m playwright install chromium
+    pip install DrissionPage beautifulsoup4
 
 Usage:
     python scrape_speedtest_global_index.py           # headless (default)
@@ -26,122 +25,45 @@ from datetime import datetime
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-from playwright_stealth import Stealth
+from DrissionPage import ChromiumPage, ChromiumOptions
 
 URL = "https://www.speedtest.net/global-index"
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"
-PROFILE_DIR = BASE_DIR / ".browser_profile"
 
 MIN_HTML_SIZE = 100_000
 
 
-def _launch_and_fetch(headless: bool) -> str:
-    """Fetch page HTML using Playwright persistent context + stealth."""
-    mode = "headless" if headless else "headed"
-    print(f"  Attempting {mode} browser with persistent profile...")
+def fetch_page(force_headed: bool = False) -> BeautifulSoup:
+    """Fetch page HTML using DrissionPage to bypass Cloudflare protection."""
+    mode = "headed" if force_headed else "headless"
+    print(f"Fetching {URL} using DrissionPage ({mode} mode)...")
 
-    PROFILE_DIR.mkdir(parents=True, exist_ok=True)
+    co = ChromiumOptions()
+    if not force_headed:
+        co.headless()
 
-    with sync_playwright() as pw:
-        channels_to_try = ["chrome", None]
-        context = None
+    page = ChromiumPage(co)
+    try:
+        page.get(URL)
 
-        for channel in channels_to_try:
-            try:
-                kwargs = {
-                    "user_data_dir": str(PROFILE_DIR),
-                    "headless": headless,
-                    "ignore_default_args": ["--enable-automation"],
-                    "args": [
-                        "--disable-blink-features=AutomationControlled",
-                        "--no-sandbox",
-                        "--disable-dev-shm-usage",
-                    ],
-                    "user_agent": (
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) "
-                        "Chrome/126.0.0.0 Safari/537.36"
-                    ),
-                    "viewport": {"width": 1920, "height": 1080},
-                    "locale": "en-US",
-                }
-                if channel:
-                    kwargs["channel"] = channel
-
-                context = pw.chromium.launch_persistent_context(**kwargs)
-                break
-            except Exception as err:
-                if channel == "chrome":
-                    continue
-                raise err
-
-        if not context:
-            raise RuntimeError("Failed to launch browser context.")
-
-        page = context.pages[0] if context.pages else context.new_page()
-
-        try:
-            Stealth().apply_stealth_sync(page)
-        except Exception:
-            pass
-
-        try:
-            page.goto(URL, wait_until="domcontentloaded", timeout=60_000)
-        except PWTimeout:
-            print("    Warning: page load timed out, proceeding with DOM.")
-
-        # If Cloudflare Turnstile challenge page appears
+        # Wait for Cloudflare challenge to complete if present
         start_time = time.time()
-        max_wait = 40 if not headless else 15
-        
-        if "Just a moment" in page.title():
-            print("    [Notice] Cloudflare challenge detected.")
-            if not headless:
-                print("    --> Please click the Cloudflare 'Verify you are human' checkbox in the open Chrome window if prompted!")
-
-        while time.time() - start_time < max_wait:
-            if "Just a moment" not in page.title():
-                print("    Cloudflare challenge cleared!")
+        while time.time() - start_time < 20:
+            if "Just a moment" not in page.title and len(page.html) >= MIN_HTML_SIZE:
                 break
-            page.wait_for_timeout(1000)
+            time.sleep(1)
 
-        # Wait for data rows selector
-        try:
-            page.wait_for_selector("tr.data-result", timeout=15_000)
-        except PWTimeout:
-            pass
-
-        page.wait_for_timeout(2000)
-
-        html = page.content()
-        print(f"    Got {len(html):,} bytes of HTML (Title: '{page.title()}').")
-        context.close()
-
-    return html
-
-
-def fetch_page(force_headed: bool = False, max_retries: int = 2) -> BeautifulSoup:
-    """Fetch the page with automatic retries and headed fallback."""
-    print(f"Fetching {URL} ...")
-
-    html = ""
-    for attempt in range(1, max_retries + 1):
-        is_headed = force_headed or (attempt > 1)
-        if attempt > 1:
-            print(
-                f"\n  [Retry {attempt}/{max_retries}] Retrying in headed mode..."
-            )
-
-        html = _launch_and_fetch(headless=not is_headed)
-        if len(html) >= MIN_HTML_SIZE:
-            break
+        html = page.html
+        title = page.title
+        print(f"  Successfully loaded page! (Title: '{title}', HTML size: {len(html):,} bytes)")
+    finally:
+        page.quit()
 
     if len(html) < MIN_HTML_SIZE:
         print(
-            f"\n  ERROR: Cloudflare verification incomplete.\n"
-            f"  Run with '--headed' and allow the browser 10 seconds to pass the Cloudflare check.",
+            f"\n  ERROR: Could not pass Cloudflare verification (HTML size: {len(html)} bytes).\n"
+            f"  Try running with '--headed' flag.",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -216,6 +138,15 @@ def extract_country_table(
     return rows
 
 
+def cleanup_non_dated_outputs() -> None:
+    """Remove stale non-dated outputs so the output folder keeps only date-stamped files."""
+    for filename in ["speedtest_mobile.csv", "speedtest_fixed_broadband.csv"]:
+        filepath = OUTPUT_DIR / filename
+        if filepath.exists():
+            filepath.unlink()
+            print(f"  Removed old non-dated file: {filepath}")
+
+
 def write_csv(rows: list[dict], filepath: Path) -> None:
     """Write rows to a CSV file."""
     if not rows:
@@ -248,6 +179,7 @@ def main() -> None:
         sys.exit(1)
 
     date_str = datetime.now().strftime("%d%m%y")
+    cleanup_non_dated_outputs()
 
     # --- Mobile ---
     print("\nParsing Mobile rankings (Median)...")
@@ -256,7 +188,6 @@ def main() -> None:
     )
     print(f"  Found {len(mobile_rows)} countries.")
     write_csv(mobile_rows, OUTPUT_DIR / f"speedtest_mobile_{date_str}.csv")
-    write_csv(mobile_rows, OUTPUT_DIR / "speedtest_mobile.csv")
 
     # --- Fixed Broadband ---
     print("\nParsing Fixed Broadband rankings (Median)...")
@@ -265,7 +196,6 @@ def main() -> None:
     )
     print(f"  Found {len(fixed_rows)} countries.")
     write_csv(fixed_rows, OUTPUT_DIR / f"speedtest_fixed_broadband_{date_str}.csv")
-    write_csv(fixed_rows, OUTPUT_DIR / "speedtest_fixed_broadband.csv")
 
     if mobile_rows:
         print(f"\nSample mobile data (top 5):")
