@@ -1,0 +1,150 @@
+rank,country,download_mbps,rank_change
+1,Singapore,447.75,+1
+2,Chile,393.43,+2
+3,United Arab Emirates,378.55,0
+4,Hong Kong (SAR),355.55,+2
+5,France,345.96,0
+6,Iceland,322.33,+1
+7,Macau (SAR),319.03,+1
+8,Vietnam,307.36,+3
+9,United States,304.83,0
+10,Switzerland,296.14,0
+11,Taiwan,291.8,+5
+12,Thailand,290.47,+2
+13,Israel,288.27,+2
+14,Denmark,287.84,-2
+15,Romania,285.28,-2
+16,Spain,270.69,+1
+17,Canada,268.0,+1
+18,Peru,265.35,+1
+19,Portugal,254.81,+2
+20,Kuwait,251.08,+3
+21,South Korea,250.31,-1
+22,Hungary,249.54,0
+23,China,237.91,+7
+24,Brazil,233.45,+3
+25,Qatar,229.43,0
+26,Netherlands,228.48,0
+27,Panama,227.4,+6
+28,Japan,224.79,-4
+29,Ecuador,224.4,+10
+30,Colombia,221.8,+2
+31,Poland,220.51,-2
+32,Luxembourg,217.36,-4
+33,New Zealand,212.85,+3
+34,Ireland,210.61,-3
+35,Sweden,209.21,0
+36,Malta,209.18,+1
+37,Lithuania,208.04,-3
+38,Uruguay,201.17,+2
+39,Slovenia,200.75,-1
+40,Jordan,195.75,+1
+41,Moldova,193.0,+1
+42,United Kingdom,181.45,+1
+43,Costa Rica,177.52,+2
+44,Malaysia,175.15,+3
+45,Saudi Arabia,174.53,+1
+46,Bahrain,173.03,+2
+47,Finland,172.05,-3
+48,Norway,165.7,+1
+49,Trinidad and Tobago,164.11,+2
+50,Australia,162.34,+2
+51,Suriname,160.8,+5
+52,Cyprus,155.92,-2
+53,Paraguay,146.91,+6
+54,Belgium,143.29,0
+55,Guyana,142.81,0
+56,Latvia,137.97,-3
+57,El Salvador,130.58,+4
+58,Croatia,121.04,0
+59,Slovakia,119.69,+1
+60,Argentina,119.58,+5
+61,Serbia,118.84,+5
+62,Italy,118.71,0
+63,Mexico,116.56,+1
+64,Austria,116.3,-1
+65,Montenegro,114.3,-8
+66,Venezuela,114.17,+2
+67,Philippines,113.98,0
+68,Oman,105.17,+2
+69,Germany,103.05,0
+70,Nicaragua,99.21,+1
+71,Guatemala,97.38,+2
+72,Estonia,94.68,0
+73,Bulgaria,94.39,+1
+74,Uzbekistan,94.14,+2
+75,Honduras,93.82,+3
+76,Albania,93.68,+1
+77,Greece,93.62,-2
+78,Egypt,93.53,+2
+79,Grenada,93.37,+2
+80,Ukraine,92.7,+2
+81,Czechia,92.59,-2
+82,Jamaica,92.42,+5
+83,Kosovo,92.4,+1
+84,Azerbaijan,92.18,-1
+85,Armenia,91.69,0
+86,Palestine,90.3,+4
+87,Kyrgyzstan,89.3,+1
+88,The Bahamas,89.2,+3
+89,Kazakhstan,89.19,0
+90,Nepal,88.7,+2
+91,Saint Kitts and Nevis,86.96,+3
+92,Brunei,86.77,-6
+93,Mongolia,85.45,0
+94,Türkiye,84.25,+1
+95,Algeria,81.69,+3
+96,Bolivia,73.67,+1
+97,Dominican Republic,73.51,-1
+98,Bangladesh,69.8,+1
+99,North Macedonia,64.32,+1
+100,Mauritius,63.68,+1
+101,India,63.25,+1
+102,Côte d'Ivoire,60.16,+1
+103,Mauritania,59.51,+2
+104,Morocco,58.72,0
+105,Laos,56.36,+1
+106,Cambodia,54.66,+1
+107,Georgia,50.83,+8
+108,South Africa,50.0,+3
+109,Tajikistan,49.92,+4
+110,Burkina Faso,49.53,-1
+111,Belize,49.47,-1
+112,Ghana,49.08,0
+113,Botswana,48.87,+1
+114,Indonesia,48.7,+3
+115,Haiti,48.57,-7
+116,Fiji,47.52,0
+117,Mozambique,47.2,+4
+118,Iraq,46.95,+4
+119,Democratic Republic of the Congo,46.6,-3
+120,Gabon,46.12,0
+121,Senegal,45.83,-3
+122,Antigua and Barbuda,44.4,-3
+123,Rwanda,43.29,0
+124,Bosnia and Herzegovina,39.58,0
+125,Benin,38.43,+4
+126,Cabo Verde,38.39,-1
+127,Tanzania,37.41,+5
+128,Nigeria,36.71,-2
+129,Sri Lanka,36.42,-2
+130,Togo,34.45,-2
+131,Zambia,33.4,-1
+132,Uganda,31.33,-1
+133,Somalia,29.5,+2
+134,Myanmar (Burma),28.23,-1
+135,Zimbabwe,27.22,-1
+136,Madagascar,26.25,0
+137,Iran,24.9,0
+138,Kenya,22.92,+2
+139,Angola,22.15,-2
+140,Tunisia,21.99,-2
+141,Lebanon,21.49,-2
+142,Guinea,19.23,-1
+143,Pakistan,18.21,-1
+144,Namibia,16.47,0
+145,Yemen,16.46,0
+146,Cameroon,14.93,-3
+147,Ethiopia,12.59,-1
+148,Libya,10.8,-1
+149,Afghanistan,5.18,-1
