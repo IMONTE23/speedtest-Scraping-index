@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speedtest Global Index Scraper</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-title">
+          <h1>Speedtest Index Scraper</h1>
+          <p>Global Internet Rankings</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <button id="btnOpenPage" class="btn btn-header" title="Open Speedtest.net Global Index">
+          <span>🌐</span> Open Speedtest
+        </button>
+        <div id="statusBadge" class="status-badge idle">
+          <span class="status-dot"></span>
+          <span id="statusText">Idle</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toolbar Actions -->
+    <div class="actions-bar">
+      <button id="btnScrape" class="btn btn-primary">
+        <span>⚡</span> Scrape Page
+      </button>
+      <button id="btnExportMobile" class="btn btn-success" disabled>
+        <span>📥</span> CSV (Mobile)
+      </button>
+      <button id="btnExportFixed" class="btn btn-success" disabled>
+        <span>📥</span> CSV (Fixed)
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-header">
+      <button id="tabMobile" class="tab-btn active">
+        <span>📱 Mobile Median</span>
+        <span id="countMobile" class="badge-count">0</span>
+      </button>
+      <button id="tabFixed" class="tab-btn">
+        <span>🌐 Fixed Broadband</span>
+        <span id="countFixed" class="badge-count">0</span>
+      </button>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="metrics-row">
+      <div class="metric-card">
+        <span class="metric-label">Total Countries</span>
+        <span id="metricTotal" class="metric-value">-</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">#1 Rank Country</span>
+        <span id="metricTop" class="metric-value">-</span>
+        <span id="metricTopSpeed" class="metric-sub"></span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Average Speed</span>
+        <span id="metricAvg" class="metric-value">-</span>
+      </div>
+    </div>
+
+    <!-- Search Input -->
+    <div class="search-container">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search country name..." disabled>
+    </div>
+
+    <!-- Table Display -->
+    <div class="table-container">
+      <table id="dataTable">
+        <thead>
+          <tr>
+            <th class="col-rank">Rank</th>
+            <th class="col-country">Country</th>
+            <th class="col-speed">Speed (Mbps)</th>
+            <th class="col-change">Change</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <!-- Populated by popup.js -->
+        </tbody>
+      </table>
+
+      <div id="emptyState" class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        <p>No rankings loaded.<br>Click <strong>"Scrape Page"</strong> while viewing Speedtest.net Global Index.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <span id="timestampText">Not scraped yet</span>
+      <span>v1.0.0</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
