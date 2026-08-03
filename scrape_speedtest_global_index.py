@@ -7,14 +7,6 @@ https://www.speedtest.net/global-index
 Extracts both Mobile and Fixed Broadband tables with:
   - Rank, Country, Download speed (Mbps), Rank change
 
-Uses DrissionPage to bypass Cloudflare Turnstile anti-bot automatically.
-
-Dependencies (install with pip):
-    pip install DrissionPage beautifulsoup4
-
-Usage:
-    python scrape_speedtest_global_index.py           # headless (default)
-    python scrape_speedtest_global_index.py --headed   # visible browser window
 """
 
 import argparse
