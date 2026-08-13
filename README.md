@@ -4,7 +4,7 @@ Scrapes country-level internet speed rankings (Mobile & Fixed Broadband) from [S
 
 This project contains two tools:
 1. **Chrome Extension (Manifest V3)** — Extract and view rankings interactively inside Chrome with 1-click CSV exports (`mobile_DDMMYY.csv`, `fixed_DDMMYY.csv`).
-2. **Python Scraper Script** — Automated headless browser scraper (`scrape_speedtest_global_index.py`) using DrissionPage and BeautifulSoup.
+2. **Python Scraper Script** — Automated headless browser scraper (`scrape_speedtest_global_index.py`) with support for proxies and Cloudflare bypass, using DrissionPage and BeautifulSoup.
 
 ---
 

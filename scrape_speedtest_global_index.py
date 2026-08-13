@@ -5,7 +5,7 @@ Scrapes country-level internet speed rankings from
 https://www.speedtest.net/global-index
 
 Extracts both Mobile and Fixed Broadband tables with:
-  - Rank, Country, Download speed (Mbps), Rank change
+  - Rank, Country, Download speed (Mbps), Rank change.
 
 """
 
