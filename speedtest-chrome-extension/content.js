@@ -1,13 +1,13 @@
 /**
  * Speedtest Global Index Scraper - Content Script
- * Extracts Mobile & Fixed Broadband rankings directly from Speedtest.net DOM.
+ * Extracts Mobile & Fixed Broadband rankings directly from Speedtest.net.
  */
 
 function parseRankChange(changeCell) {
   if (!changeCell) return "";
   const tooltip = changeCell.querySelector("span.tooltip");
   if (!tooltip) return "";
-  
+
   if (tooltip.classList.contains("neutral")) {
     return "0";
   }
