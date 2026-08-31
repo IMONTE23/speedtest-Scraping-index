@@ -14,6 +14,23 @@ function parseRankChange(changeCell) {
   return tooltip.textContent.trim();
 }
 
+/**
+ * Extract the data period label, e.g. "Median Country Speeds Updated July 2026".
+ * The month/year is rendered by JS into <span id="measureLocationId">.
+ */
+function parseDataPeriod() {
+  const titleEl = document.querySelector(".page-header-title");
+  const label = titleEl ? titleEl.textContent.trim() : "";
+
+  // <span id="measureLocationId"> holds JS-rendered month+year
+  const monthSpan = document.getElementById("measureLocationId");
+  const monthYear = monthSpan ? monthSpan.textContent.trim() : "";
+
+  if (label && monthYear) return `${label} ${monthYear}`;
+  if (label) return label;
+  return "";
+}
+
 function extractCountryTable(containerId, linkFragment) {
   const container = containerId ? document.getElementById(containerId) : document;
   if (!container) return [];
@@ -64,10 +81,12 @@ function extractCountryTable(containerId, linkFragment) {
 function scrapeSpeedtestData() {
   const mobileRows = extractCountryTable("column-mobileMedian", "#mobile");
   const fixedRows = extractCountryTable("column-fixedMedian", "#fixed");
+  const dataPeriod = parseDataPeriod();
 
   return {
     mobile: mobileRows,
     fixed: fixedRows,
+    dataPeriod: dataPeriod,
     scrapedAt: new Date().toISOString(),
     pageTitle: document.title,
     url: window.location.href

@@ -4,7 +4,8 @@
 
 let scrapedData = {
   mobile: [],
-  fixed: []
+  fixed: [],
+  dataPeriod: ""
 };
 
 let activeCategory = "mobile"; // 'mobile' or 'fixed'
@@ -56,15 +57,18 @@ function setStatus(type, message) {
  * Convert rows to CSV string
  */
 function generateCSV(rows) {
-  const headers = ["rank", "country", "download_mbps", "rank_change"];
+  const headers = ["rank", "country", "download_mbps", "rank_change", "data_period"];
   const csvLines = [headers.join(",")];
 
   rows.forEach((r) => {
     const countryEscaped = r.country.includes(",") || r.country.includes('"')
       ? `"${r.country.replace(/"/g, '""')}"`
       : r.country;
+    const period = (r.data_period || "").includes(",")
+      ? `"${r.data_period}"`
+      : (r.data_period || "");
     
-    csvLines.push(`${r.rank},${countryEscaped},${r.download_mbps},${r.rank_change}`);
+    csvLines.push(`${r.rank},${countryEscaped},${r.download_mbps},${r.rank_change},${period}`);
   });
 
   return csvLines.join("\n");
@@ -242,6 +246,12 @@ async function triggerScrape() {
 function handleScrapedResult(data) {
   scrapedData.mobile = data.mobile || [];
   scrapedData.fixed = data.fixed || [];
+  scrapedData.dataPeriod = data.dataPeriod || "";
+
+  // Stamp each row with data_period so it appears in CSV
+  const period = scrapedData.dataPeriod;
+  scrapedData.mobile.forEach(r => { r.data_period = period; });
+  scrapedData.fixed.forEach(r => { r.data_period = period; });
 
   const totalCount = scrapedData.mobile.length + scrapedData.fixed.length;
   if (totalCount === 0) {
@@ -251,7 +261,8 @@ function handleScrapedResult(data) {
   }
 
   setStatus("ready", `Scraped (${totalCount})`);
-  timestampText.textContent = `Scraped at ${new Date().toLocaleTimeString()}`;
+  const periodLabel = period ? ` · ${period}` : "";
+  timestampText.textContent = `Scraped at ${new Date().toLocaleTimeString()}${periodLabel}`;
   renderTable();
 }
 

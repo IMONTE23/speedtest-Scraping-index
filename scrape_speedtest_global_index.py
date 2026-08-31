@@ -5,7 +5,7 @@ Scrapes country-level internet speed rankings from
 https://www.speedtest.net/global-index
 
 Extracts both Mobile and Fixed Broadband tables with:
-  - Rank, Country, Download speed (Mbps), Rank change.
+  - Rank, Country, Download speed (Mbps), Rank change, Data period.
 
 """
 
@@ -61,6 +61,41 @@ def fetch_page(force_headed: bool = False) -> BeautifulSoup:
         sys.exit(1)
 
     return BeautifulSoup(html, "html.parser")
+
+
+def parse_data_period(soup: BeautifulSoup) -> str:
+    """Extract the data period header, e.g. 'Median Country Speeds Updated July 2026'.
+
+    The month/year is injected by JavaScript into <span id="measureLocationId">
+    which appears empty in the parsed DOM. We therefore:
+      1. Find the static label element (div.page-header-title) for the 'Updated' text.
+      2. Extract month+year via regex from the raw HTML string.
+    Returns the combined string, e.g. 'Median Country Speeds Updated July 2026'.
+    """
+    import re
+
+    # Step 1: get the static label
+    label = ""
+    for tag in soup.find_all(["h1", "h2", "h3", "h4", "p", "span", "div"]):
+        text = tag.get_text(" ", strip=True)
+        if "Updated" in text and len(text) < 120:
+            label = text
+            break
+
+    if not label:
+        return ""
+
+    # Step 2: extract month+year from raw HTML (JS-rendered value lives there)
+    months = (
+        "January|February|March|April|May|June|"
+        "July|August|September|October|November|December"
+    )
+    html_str = str(soup)
+    match = re.search(rf"({months})\s+(20\d\d)", html_str)
+    if match:
+        return f"{label} {match.group(1)} {match.group(2)}"
+
+    return label
 
 
 def parse_rank_change(cell) -> str:
@@ -124,6 +159,7 @@ def extract_country_table(
             "country": country,
             "download_mbps": float(speed) if speed else "",
             "rank_change": change,
+            "data_period": "",  # filled in by caller
         })
 
     rows.sort(key=lambda r: r["rank"] if isinstance(r["rank"], int) else 9999)
@@ -144,7 +180,7 @@ def write_csv(rows: list[dict], filepath: Path) -> None:
     if not rows:
         print(f"  No data to write for {filepath.name}")
         return
-    fieldnames = ["rank", "country", "download_mbps", "rank_change"]
+    fieldnames = ["rank", "country", "download_mbps", "rank_change", "data_period"]
     filepath.parent.mkdir(parents=True, exist_ok=True)
     with open(filepath, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -170,6 +206,13 @@ def main() -> None:
         print(f"Error fetching page: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Extract the data-period header from the page
+    data_period = parse_data_period(soup)
+    if data_period:
+        print(f"\nData period detected: '{data_period}'")
+    else:
+        print("\nWarning: Could not detect data period header.")
+
     date_str = datetime.now().strftime("%d%m%y")
     cleanup_non_dated_outputs()
 
@@ -178,6 +221,8 @@ def main() -> None:
     mobile_rows = extract_country_table(
         soup, "#mobile", container_id="column-mobileMedian"
     )
+    for r in mobile_rows:
+        r["data_period"] = data_period
     print(f"  Found {len(mobile_rows)} countries.")
     write_csv(mobile_rows, OUTPUT_DIR / f"speedtest_mobile_{date_str}.csv")
 
@@ -186,6 +231,8 @@ def main() -> None:
     fixed_rows = extract_country_table(
         soup, "#fixed", container_id="column-fixedMedian"
     )
+    for r in fixed_rows:
+        r["data_period"] = data_period
     print(f"  Found {len(fixed_rows)} countries.")
     write_csv(fixed_rows, OUTPUT_DIR / f"speedtest_fixed_broadband_{date_str}.csv")
 
