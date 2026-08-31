@@ -64,28 +64,13 @@ def fetch_page(force_headed: bool = False) -> BeautifulSoup:
 
 
 def parse_data_period(soup: BeautifulSoup) -> str:
-    """Extract the data period header, e.g. 'Median Country Speeds Updated July 2026'.
+    """Extract the data period as 'Updated July 2026'.
 
     The month/year is injected by JavaScript into <span id="measureLocationId">
-    which appears empty in the parsed DOM. We therefore:
-      1. Find the static label element (div.page-header-title) for the 'Updated' text.
-      2. Extract month+year via regex from the raw HTML string.
-    Returns the combined string, e.g. 'Median Country Speeds Updated July 2026'.
+    which appears empty in the parsed DOM, so we regex-scan the raw HTML.
     """
     import re
 
-    # Step 1: get the static label
-    label = ""
-    for tag in soup.find_all(["h1", "h2", "h3", "h4", "p", "span", "div"]):
-        text = tag.get_text(" ", strip=True)
-        if "Updated" in text and len(text) < 120:
-            label = text
-            break
-
-    if not label:
-        return ""
-
-    # Step 2: extract month+year from raw HTML (JS-rendered value lives there)
     months = (
         "January|February|March|April|May|June|"
         "July|August|September|October|November|December"
@@ -93,9 +78,9 @@ def parse_data_period(soup: BeautifulSoup) -> str:
     html_str = str(soup)
     match = re.search(rf"({months})\s+(20\d\d)", html_str)
     if match:
-        return f"{label} {match.group(1)} {match.group(2)}"
+        return f"Updated {match.group(1)} {match.group(2)}"
 
-    return label
+    return ""
 
 
 def parse_rank_change(cell) -> str:

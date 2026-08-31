@@ -16,19 +16,32 @@ function parseRankChange(changeCell) {
 
 /**
  * Extract the data period label, e.g. "Median Country Speeds Updated July 2026".
- * The month/year is rendered by JS into <span id="measureLocationId">.
+ *
+ * Strategy:
+ *  1. Get the static label from .page-header-title ("Median Country Speeds Updated")
+ *  2. Try #measureLocationId for the JS-rendered month+year
+ *  3. If still empty, regex-scan document.body.innerHTML as a fallback
+ *     (the value is often embedded in a <script> or data attribute even if the
+ *      visible span hasn't rendered yet)
  */
 function parseDataPeriod() {
   const titleEl = document.querySelector(".page-header-title");
   const label = titleEl ? titleEl.textContent.trim() : "";
 
-  // <span id="measureLocationId"> holds JS-rendered month+year
+  // Primary: JS-rendered span
   const monthSpan = document.getElementById("measureLocationId");
   const monthYear = monthSpan ? monthSpan.textContent.trim() : "";
 
-  if (label && monthYear) return `${label} ${monthYear}`;
-  if (label) return label;
-  return "";
+  if (label && monthYear) return `Updated ${monthYear}`;
+
+  // Fallback: regex on raw HTML (same approach as Python scraper)
+  const months = "January|February|March|April|May|June|July|August|September|October|November|December";
+  const match = document.body.innerHTML.match(new RegExp(`(${months})\\s+(20\\d{2})`));
+  if (match) {
+    return `Updated ${match[1]} ${match[2]}`;
+  }
+
+  return label;
 }
 
 function extractCountryTable(containerId, linkFragment) {
