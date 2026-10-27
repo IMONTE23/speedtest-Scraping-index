@@ -1,5 +1,5 @@
 # Output files (scraped data)
-output/
+# output/
 
 # Python
 __pycache__/
