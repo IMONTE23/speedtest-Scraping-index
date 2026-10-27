@@ -5,7 +5,7 @@
 let scrapedData = {
   mobile: [],
   fixed: [],
-  dataPeriod: ""
+  yearMonth: ""
 };
 
 let activeCategory = "mobile"; // 'mobile' or 'fixed'
@@ -16,6 +16,7 @@ const btnScrape = document.getElementById("btnScrape");
 const btnOpenPage = document.getElementById("btnOpenPage");
 const btnExportMobile = document.getElementById("btnExportMobile");
 const btnExportFixed = document.getElementById("btnExportFixed");
+const btnExportExcel = document.getElementById("btnExportExcel");
 
 const tabMobile = document.getElementById("tabMobile");
 const tabFixed = document.getElementById("tabFixed");
@@ -54,21 +55,21 @@ function setStatus(type, message) {
 }
 
 /**
- * Convert rows to CSV string
+ * Convert rows to CSV string with yyyy-mm column
  */
 function generateCSV(rows) {
-  const headers = ["rank", "country", "download_mbps", "rank_change", "data_period"];
+  const headers = ["rank", "country", "download_mbps", "rank_change", "yyyy-mm"];
   const csvLines = [headers.join(",")];
 
   rows.forEach((r) => {
     const countryEscaped = r.country.includes(",") || r.country.includes('"')
       ? `"${r.country.replace(/"/g, '""')}"`
       : r.country;
-    const period = (r.data_period || "").includes(",")
-      ? `"${r.data_period}"`
-      : (r.data_period || "");
+    const yyyyMm = (r["yyyy-mm"] || "").includes(",")
+      ? `"${r["yyyy-mm"]}"`
+      : (r["yyyy-mm"] || "");
     
-    csvLines.push(`${r.rank},${countryEscaped},${r.download_mbps},${r.rank_change},${period}`);
+    csvLines.push(`${r.rank},${countryEscaped},${r.download_mbps},${r.rank_change},${yyyyMm}`);
   });
 
   return csvLines.join("\n");
@@ -104,6 +105,212 @@ function downloadCSV(rows, prefix) {
 }
 
 /**
+ * Escape XML special characters
+ */
+function escapeXml(val) {
+  return String(val ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+/**
+ * Build OpenXML worksheet XML from rows with yyyy-mm column
+ */
+function buildSheetXml(rows) {
+  const headers = ["rank", "country", "download_mbps", "rank_change", "yyyy-mm"];
+  const cols = ["A", "B", "C", "D", "E"];
+  const xmlRows = [];
+
+  const headerCells = headers
+    .map((h, i) => `<c r="${cols[i]}1" t="inlineStr"><is><t>${escapeXml(h)}</t></is></c>`)
+    .join("");
+  xmlRows.push(`<row r="1">${headerCells}</row>`);
+
+  rows.forEach((r, idx) => {
+    const rowNum = idx + 2;
+    const values = [r.rank, r.country, r.download_mbps, r.rank_change, r["yyyy-mm"] || ""];
+    const cells = values
+      .map((v, i) => {
+        const ref = `${cols[i]}${rowNum}`;
+        if (typeof v === "number" && !Number.isNaN(v)) {
+          return `<c r="${ref}"><v>${v}</v></c>`;
+        }
+        return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(v)}</t></is></c>`;
+      })
+      .join("");
+    xmlRows.push(`<row r="${rowNum}">${cells}</row>`);
+  });
+
+  return (
+    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    `<sheetData>${xmlRows.join("")}</sheetData>` +
+    `</worksheet>`
+  );
+}
+
+/**
+ * Compute CRC32 for Uint8Array
+ */
+function crc32(bytes) {
+  let c = 0xffffffff;
+  for (let i = 0; i < bytes.length; i++) {
+    c ^= bytes[i];
+    for (let k = 0; k < 8; k++) {
+      c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+/**
+ * Create an uncompressed ZIP archive (Uint8Array) from a map of filename -> string content
+ */
+function createZip(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+
+  for (const [name, content] of Object.entries(files)) {
+    const nameBytes = encoder.encode(name);
+    const dataBytes = encoder.encode(content);
+    const crc = crc32(dataBytes);
+    const size = dataBytes.length;
+
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(localHeader.buffer);
+    lv.setUint32(0, 0x04034b50, true); // Local file header signature
+    lv.setUint16(4, 20, true);         // Version needed to extract
+    lv.setUint16(6, 0, true);          // Flags
+    lv.setUint16(8, 0, true);          // Compression method (0 = store)
+    lv.setUint16(10, 0, true);         // Mod time
+    lv.setUint16(12, 0, true);         // Mod date
+    lv.setUint32(14, crc, true);       // CRC-32
+    lv.setUint32(18, size, true);      // Compressed size
+    lv.setUint32(22, size, true);      // Uncompressed size
+    lv.setUint16(26, nameBytes.length, true); // File name length
+    lv.setUint16(28, 0, true);         // Extra field length
+    localHeader.set(nameBytes, 30);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(centralHeader.buffer);
+    cv.setUint32(0, 0x02014b50, true); // Central directory signature
+    cv.setUint16(4, 20, true);         // Version made by
+    cv.setUint16(6, 20, true);         // Version needed
+    cv.setUint16(8, 0, true);          // Flags
+    cv.setUint16(10, 0, true);         // Compression method (0 = store)
+    cv.setUint16(12, 0, true);         // Mod time
+    cv.setUint16(14, 0, true);         // Mod date
+    cv.setUint32(16, crc, true);       // CRC-32
+    cv.setUint32(20, size, true);      // Compressed size
+    cv.setUint24 ? cv.setUint24 : null;
+    cv.setUint32(24, size, true);      // Uncompressed size
+    cv.setUint16(28, nameBytes.length, true); // File name length
+    cv.setUint16(30, 0, true);         // Extra field length
+    cv.setUint16(32, 0, true);         // File comment length
+    cv.setUint16(34, 0, true);         // Disk number
+    cv.setUint16(36, 0, true);         // Internal attributes
+    cv.setUint32(38, 0, true);         // External attributes
+    cv.setUint32(42, offset, true);    // Relative offset of local header
+    centralHeader.set(nameBytes, 46);
+
+    localParts.push(localHeader, dataBytes);
+    centralParts.push(centralHeader);
+    offset += localHeader.length + dataBytes.length;
+  }
+
+  const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+  const eocd = new Uint8Array(22);
+  const ev = new DataView(eocd.buffer);
+  const count = centralParts.length;
+  ev.setUint32(0, 0x06054b50, true); // End of central directory signature
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, count, true);
+  ev.setUint16(10, count, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, offset, true);
+  ev.setUint16(20, 0, true);
+
+  const totalSize = offset + centralSize + eocd.length;
+  const out = new Uint8Array(totalSize);
+  let pos = 0;
+  for (const part of [...localParts, ...centralParts, eocd]) {
+    out.set(part, pos);
+    pos += part.length;
+  }
+  return out;
+}
+
+/**
+ * Download combined Excel (.xlsx) file with 2 sheets: mobile, fixed
+ */
+function downloadExcel(mobileRows, fixedRows) {
+  if ((!mobileRows || mobileRows.length === 0) && (!fixedRows || fixedRows.length === 0)) {
+    return;
+  }
+
+  const files = {
+    "[Content_Types].xml":
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+      `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+      `<Default Extension="xml" ContentType="application/xml"/>` +
+      `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+      `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+      `<Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+      `</Types>`,
+    "_rels/.rels":
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+      `</Relationships>`,
+    "xl/workbook.xml":
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+      `<sheets>` +
+      `<sheet name="mobile" sheetId="1" r:id="rId1"/>` +
+      `<sheet name="fixed" sheetId="2" r:id="rId2"/>` +
+      `</sheets>` +
+      `</workbook>`,
+    "xl/_rels/workbook.xml.rels":
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+      `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/>` +
+      `</Relationships>`,
+    "xl/worksheets/sheet1.xml": buildSheetXml(mobileRows || []),
+    "xl/worksheets/sheet2.xml": buildSheetXml(fixedRows || [])
+  };
+
+  const xlsxBytes = createZip(files);
+  const dateStr = getDateString();
+  const filename = `speedtest_${dateStr}.xlsx`;
+
+  const blob = new Blob([xlsxBytes], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+  const blobUrl = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.style.display = "none";
+  a.href = blobUrl;
+  a.download = filename;
+
+  document.body.appendChild(a);
+  a.click();
+
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }, 1000);
+}
+
+/**
  * Render Data Table & Summary Metrics
  */
 function renderTable() {
@@ -116,6 +323,7 @@ function renderTable() {
 
   countMobile.textContent = scrapedData.mobile.length;
   countFixed.textContent = scrapedData.fixed.length;
+  const hasAnyData = scrapedData.mobile.length > 0 || scrapedData.fixed.length > 0;
 
   if (dataset.length === 0) {
     tableBody.innerHTML = "";
@@ -127,6 +335,7 @@ function renderTable() {
     searchInput.disabled = true;
     btnExportMobile.disabled = scrapedData.mobile.length === 0;
     btnExportFixed.disabled = scrapedData.fixed.length === 0;
+    btnExportExcel.disabled = !hasAnyData;
     return;
   }
 
@@ -134,6 +343,7 @@ function renderTable() {
   searchInput.disabled = false;
   btnExportMobile.disabled = scrapedData.mobile.length === 0;
   btnExportFixed.disabled = scrapedData.fixed.length === 0;
+  btnExportExcel.disabled = !hasAnyData;
 
   // Calculate Metrics
   metricTotal.textContent = dataset.length;
@@ -205,40 +415,39 @@ async function triggerScrape() {
       return;
     }
 
-    // Try messaging content script first
-    chrome.tabs.sendMessage(tab.id, { action: "SCRAPE_DATA" }, async (response) => {
-      if (chrome.runtime.lastError || !response || !response.success) {
-        // Content script might not be injected yet, inject dynamically
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            files: ["content.js"]
-          });
+    // Always inject the latest content.js script directly into the tab first
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content.js"]
+      });
 
-          // Execute scraping function directly
-          const [execResult] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: () => window.__scrapeSpeedtestData ? window.__scrapeSpeedtestData() : null
-          });
+      const [execResult] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => (window.__scrapeSpeedtestData ? window.__scrapeSpeedtestData() : null)
+      });
 
-          if (execResult && execResult.result) {
-            handleScrapedResult(execResult.result);
-          } else {
-            throw new Error("Failed to extract DOM data from Speedtest page");
-          }
-        } catch (err) {
-          setStatus("error", "Failed");
-          alert(`Scraping failed: ${err.message}`);
-        }
+      if (execResult && execResult.result) {
+        handleScrapedResult(execResult.result);
       } else {
-        handleScrapedResult(response.data);
+        throw new Error("Failed to extract DOM data from Speedtest page");
       }
-      btnScrape.disabled = false;
-    });
+    } catch (injectErr) {
+      // Fallback: try messaging content script
+      chrome.tabs.sendMessage(tab.id, { action: "SCRAPE_DATA" }, (response) => {
+        if (response && response.success) {
+          handleScrapedResult(response.data);
+        } else {
+          setStatus("error", "Failed");
+          alert(`Scraping failed: ${injectErr.message || "Unknown error"}`);
+        }
+      });
+    }
 
   } catch (err) {
     setStatus("error", "Error");
     alert(`Scraping error: ${err.message}`);
+  } finally {
     btnScrape.disabled = false;
   }
 }
@@ -246,12 +455,12 @@ async function triggerScrape() {
 function handleScrapedResult(data) {
   scrapedData.mobile = data.mobile || [];
   scrapedData.fixed = data.fixed || [];
-  scrapedData.dataPeriod = data.dataPeriod || "";
+  scrapedData.yearMonth = data.yearMonth || data.dataPeriod || "";
 
-  // Stamp each row with data_period so it appears in CSV
-  const period = scrapedData.dataPeriod;
-  scrapedData.mobile.forEach(r => { r.data_period = period; });
-  scrapedData.fixed.forEach(r => { r.data_period = period; });
+  // Stamp each row with yyyy-mm so it appears in CSV/Excel
+  const ym = scrapedData.yearMonth;
+  scrapedData.mobile.forEach(r => { r["yyyy-mm"] = ym; });
+  scrapedData.fixed.forEach(r => { r["yyyy-mm"] = ym; });
 
   const totalCount = scrapedData.mobile.length + scrapedData.fixed.length;
   if (totalCount === 0) {
@@ -261,7 +470,7 @@ function handleScrapedResult(data) {
   }
 
   setStatus("ready", `Scraped (${totalCount})`);
-  const periodLabel = period ? ` · ${period}` : "";
+  const periodLabel = ym ? ` · ${ym}` : "";
   timestampText.textContent = `Scraped at ${new Date().toLocaleTimeString()}${periodLabel}`;
   renderTable();
 }
@@ -279,6 +488,10 @@ btnExportMobile.addEventListener("click", () => {
 
 btnExportFixed.addEventListener("click", () => {
   downloadCSV(scrapedData.fixed, "fixed");
+});
+
+btnExportExcel.addEventListener("click", () => {
+  downloadExcel(scrapedData.mobile, scrapedData.fixed);
 });
 
 tabMobile.addEventListener("click", () => {

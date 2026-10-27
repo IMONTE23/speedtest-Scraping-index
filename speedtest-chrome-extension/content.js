@@ -3,6 +3,106 @@
  * Extracts Mobile & Fixed Broadband rankings directly from Speedtest.net.
  */
 
+const MONTH_MAP = {
+  january: "01",
+  february: "02",
+  march: "03",
+  april: "04",
+  may: "05",
+  june: "06",
+  july: "07",
+  august: "08",
+  september: "09",
+  october: "10",
+  november: "11",
+  december: "12",
+  jan: "01",
+  feb: "02",
+  mar: "03",
+  apr: "04",
+  jun: "06",
+  jul: "07",
+  aug: "08",
+  sep: "09",
+  sept: "09",
+  oct: "10",
+  nov: "11",
+  dec: "12"
+};
+
+function formatYearMonth(monthStr, yearStr) {
+  if (!monthStr || !yearStr) return "";
+  const m = MONTH_MAP[monthStr.trim().toLowerCase()];
+  if (!m) return "";
+  return `${yearStr.trim()}-${m}`;
+}
+
+/**
+ * Extract data period as "YYYY-MM" (e.g. "2026-09" from "Median Country Speeds Updated September 2026").
+ */
+function parseYearMonth() {
+  const months = (
+    "January|February|March|April|May|June|" +
+    "July|August|September|October|November|December"
+  );
+  const regex = new RegExp(`(?:Updated\\s+)?(${months})\\s+(20\\d{2})`, "i");
+
+  // 1. Check specific known elements
+  const measureEl = document.getElementById("measureLocationId");
+  if (measureEl && measureEl.textContent) {
+    const m = measureEl.textContent.match(regex);
+    if (m) {
+      const res = formatYearMonth(m[1], m[2]);
+      if (res) return res;
+    }
+  }
+
+  const titleEl = document.querySelector(".page-header-title");
+  if (titleEl && titleEl.textContent) {
+    const m = titleEl.textContent.match(regex);
+    if (m) {
+      const res = formatYearMonth(m[1], m[2]);
+      if (res) return res;
+    }
+  }
+
+  // 2. Elements containing "Updated"
+  const elements = document.querySelectorAll("h1, h2, h3, h4, span, div, p");
+  for (const el of elements) {
+    const text = el.textContent;
+    if (text && text.includes("Updated")) {
+      const m = text.match(regex);
+      if (m) {
+        const res = formatYearMonth(m[1], m[2]);
+        if (res) return res;
+      }
+    }
+  }
+
+  // 3. Visible body text
+  if (document.body && document.body.innerText) {
+    const m = document.body.innerText.match(regex);
+    if (m) {
+      const res = formatYearMonth(m[1], m[2]);
+      if (res) return res;
+    }
+  }
+
+  // 4. Fallback: regex search on cleaned HTML
+  if (document.body && document.body.innerHTML) {
+    const cleaned = document.body.innerHTML
+      .replace(/&nbsp;/g, " ")
+      .replace(/<[^>]+>/g, " ");
+    const m = cleaned.match(regex);
+    if (m) {
+      const res = formatYearMonth(m[1], m[2]);
+      if (res) return res;
+    }
+  }
+
+  return "";
+}
+
 function parseRankChange(changeCell) {
   if (!changeCell) return "";
   const tooltip = changeCell.querySelector("span.tooltip");
@@ -12,36 +112,6 @@ function parseRankChange(changeCell) {
     return "0";
   }
   return tooltip.textContent.trim();
-}
-
-/**
- * Extract the data period label, e.g. "Median Country Speeds Updated July 2026".
- *
- * Strategy:
- *  1. Get the static label from .page-header-title ("Median Country Speeds Updated")
- *  2. Try #measureLocationId for the JS-rendered month+year
- *  3. If still empty, regex-scan document.body.innerHTML as a fallback
- *     (the value is often embedded in a <script> or data attribute even if the
- *      visible span hasn't rendered yet)
- */
-function parseDataPeriod() {
-  const titleEl = document.querySelector(".page-header-title");
-  const label = titleEl ? titleEl.textContent.trim() : "";
-
-  // Primary: JS-rendered span
-  const monthSpan = document.getElementById("measureLocationId");
-  const monthYear = monthSpan ? monthSpan.textContent.trim() : "";
-
-  if (label && monthYear) return `Updated ${monthYear}`;
-
-  // Fallback: regex on raw HTML (same approach as Python scraper)
-  const months = "January|February|March|April|May|June|July|August|September|October|November|December";
-  const match = document.body.innerHTML.match(new RegExp(`(${months})\\s+(20\\d{2})`));
-  if (match) {
-    return `Updated ${match[1]} ${match[2]}`;
-  }
-
-  return label;
 }
 
 function extractCountryTable(containerId, linkFragment) {
@@ -78,7 +148,8 @@ function extractCountryTable(containerId, linkFragment) {
       rank: rank,
       country: country,
       download_mbps: downloadMbps,
-      rank_change: change
+      rank_change: change,
+      "yyyy-mm": ""
     });
   });
 
@@ -94,12 +165,16 @@ function extractCountryTable(containerId, linkFragment) {
 function scrapeSpeedtestData() {
   const mobileRows = extractCountryTable("column-mobileMedian", "#mobile");
   const fixedRows = extractCountryTable("column-fixedMedian", "#fixed");
-  const dataPeriod = parseDataPeriod();
+  const yyyyMm = parseYearMonth();
+
+  mobileRows.forEach((r) => { r["yyyy-mm"] = yyyyMm; });
+  fixedRows.forEach((r) => { r["yyyy-mm"] = yyyyMm; });
 
   return {
     mobile: mobileRows,
     fixed: fixedRows,
-    dataPeriod: dataPeriod,
+    yearMonth: yyyyMm,
+    dataPeriod: yyyyMm,
     scrapedAt: new Date().toISOString(),
     pageTitle: document.title,
     url: window.location.href
