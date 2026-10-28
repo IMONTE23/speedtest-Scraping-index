@@ -18,12 +18,13 @@ from rapidfuzz import process, fuzz
 BASE_DIR = pathlib.Path(__file__).resolve().parent
 PDF_DIR = BASE_DIR / "Speedtest Data pdf"
 OUTPUT_DIR = BASE_DIR / "output"
+CSV_OUTPUT_DIR = OUTPUT_DIR / "csv"
 
 engine = RapidOCR()
 
 # Load canonical countries from 2026-09 CSVs + known Speedtest countries
 CANONICAL_COUNTRIES = set()
-for f in OUTPUT_DIR.glob("*.csv"):
+for f in list(CSV_OUTPUT_DIR.glob("*.csv")) + list(OUTPUT_DIR.glob("*.csv")):
     with open(f, encoding="utf-8") as fp:
         for row in csv.DictReader(fp):
             if row.get("country"):
@@ -493,8 +494,12 @@ def main():
         all_fixed.extend(fix_rows)
 
     # Append 2026-09 data if present in output/speedtest_mobile_271026.csv and speedtest_fixed_broadband_271026.csv
-    mob_sep_csv = OUTPUT_DIR / "speedtest_mobile_271026.csv"
-    fix_sep_csv = OUTPUT_DIR / "speedtest_fixed_broadband_271026.csv"
+    mob_sep_csv = CSV_OUTPUT_DIR / "speedtest_mobile_271026.csv"
+    if not mob_sep_csv.exists():
+        mob_sep_csv = OUTPUT_DIR / "speedtest_mobile_271026.csv"
+    fix_sep_csv = CSV_OUTPUT_DIR / "speedtest_fixed_broadband_271026.csv"
+    if not fix_sep_csv.exists():
+        fix_sep_csv = OUTPUT_DIR / "speedtest_fixed_broadband_271026.csv"
     if mob_sep_csv.exists():
         with open(mob_sep_csv, encoding="utf-8") as fp:
             sep_mob = []
@@ -550,8 +555,9 @@ def main():
     print(f"  - Sheet 'fixed':  {len(all_fixed)} rows")
 
     # Also update/write combined CSVs for convenience
-    mob_csv_out = OUTPUT_DIR / "speedtest_mobile_2026_02_to_09.csv"
-    fix_csv_out = OUTPUT_DIR / "speedtest_fixed_broadband_2026_02_to_09.csv"
+    CSV_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    mob_csv_out = CSV_OUTPUT_DIR / "speedtest_mobile_2026_02_to_09.csv"
+    fix_csv_out = CSV_OUTPUT_DIR / "speedtest_fixed_broadband_2026_02_to_09.csv"
     for path, rows in [(mob_csv_out, all_mobile), (fix_csv_out, all_fixed)]:
         with open(path, "w", newline="", encoding="utf-8") as fp:
             writer = csv.DictWriter(fp, fieldnames=fieldnames)

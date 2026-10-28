@@ -52,9 +52,9 @@ python scrape_speedtest_global_index.py --headed
 
 ### Output
 
-Output files are written to `output/`:
-- `speedtest_mobile_DDMMYY.csv`
-- `speedtest_fixed_broadband_DDMMYY.csv`
+Output files:
+- Excel file (`speedtest_global_index_DDMMYY.xlsx`) is saved in `output/`
+- CSV files (`speedtest_mobile_DDMMYY.csv`, `speedtest_fixed_broadband_DDMMYY.csv`) are saved in `output/csv/`
 
 ---
 

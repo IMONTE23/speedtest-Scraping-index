@@ -24,6 +24,7 @@ from openpyxl import Workbook
 URL = "https://www.speedtest.net/global-index"
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "output"
+CSV_OUTPUT_DIR = OUTPUT_DIR / "csv"
 
 MIN_HTML_SIZE = 100_000
 
@@ -211,11 +212,12 @@ def extract_country_table(
 
 def cleanup_non_dated_outputs() -> None:
     """Remove stale non-dated outputs so the output folder keeps only date-stamped files."""
-    for filename in ["speedtest_mobile.csv", "speedtest_fixed_broadband.csv"]:
-        filepath = OUTPUT_DIR / filename
-        if filepath.exists():
-            filepath.unlink()
-            print(f"  Removed old non-dated file: {filepath}")
+    for folder in (OUTPUT_DIR, CSV_OUTPUT_DIR):
+        for filename in ["speedtest_mobile.csv", "speedtest_fixed_broadband.csv"]:
+            filepath = folder / filename
+            if filepath.exists():
+                filepath.unlink()
+                print(f"  Removed old non-dated file: {filepath}")
 
 
 def write_csv(rows: list[dict], filepath: Path) -> None:
@@ -296,7 +298,7 @@ def main() -> None:
     for r in mobile_rows:
         r["yyyy-mm"] = yyyy_mm
     print(f"  Found {len(mobile_rows)} countries.")
-    write_csv(mobile_rows, OUTPUT_DIR / f"speedtest_mobile_{date_str}.csv")
+    write_csv(mobile_rows, CSV_OUTPUT_DIR / f"speedtest_mobile_{date_str}.csv")
 
     # --- Fixed Broadband ---
     print("\nParsing Fixed Broadband rankings (Median)...")
@@ -306,7 +308,7 @@ def main() -> None:
     for r in fixed_rows:
         r["yyyy-mm"] = yyyy_mm
     print(f"  Found {len(fixed_rows)} countries.")
-    write_csv(fixed_rows, OUTPUT_DIR / f"speedtest_fixed_broadband_{date_str}.csv")
+    write_csv(fixed_rows, CSV_OUTPUT_DIR / f"speedtest_fixed_broadband_{date_str}.csv")
 
     # --- Combined Excel (mobile + fixed) ---
     print("\nSaving combined Excel workbook...")
