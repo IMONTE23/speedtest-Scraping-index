@@ -238,7 +238,40 @@ function buildWorkbookFiles(data) {
   return files;
 }
 
-if (typeof document !== "undefined") {
+/**
+ * Render a single table row with escaped values
+ */
+function renderRowHtml(r, locationKey = "country") {
+  let changeClass = "neutral";
+  let changeDisplay = "0";
+  const rawChange = String(r.rank_change ?? "");
+  if (rawChange && rawChange !== "0") {
+    if (rawChange.startsWith("+")) {
+      changeClass = "positive";
+      changeDisplay = rawChange;
+    } else if (rawChange.startsWith("-")) {
+      changeClass = "negative";
+      changeDisplay = rawChange;
+    } else {
+      changeDisplay = rawChange;
+    }
+  }
+
+  const speedDisplay = Number.isFinite(r.download_mbps) ? r.download_mbps.toFixed(2) : "-";
+
+  return `
+          <tr>
+            <td class="col-rank">#${escapeHtml(r.rank)}</td>
+            <td class="col-country">${escapeHtml(r[locationKey] || "")}</td>
+            <td class="col-speed">${speedDisplay}</td>
+            <td class="col-change">
+              <span class="change-badge ${changeClass}">${escapeHtml(changeDisplay)}</span>
+            </td>
+          </tr>
+        `;
+}
+
+function initPopupController(doc, alertFn = (msg) => alert(msg)) {
   const CATEGORY_KEYS = ["mobile_country", "fixed_country", "mobile_city", "fixed_city"];
 
   let scrapedData = {
@@ -252,38 +285,38 @@ if (typeof document !== "undefined") {
   let activeCategory = "mobile_country";
   let searchQuery = "";
 
-  const btnScrape = document.getElementById("btnScrape");
-  const btnOpenPage = document.getElementById("btnOpenPage");
-  const btnExportExcel = document.getElementById("btnExportExcel");
+  const btnScrape = doc.getElementById("btnScrape");
+  const btnOpenPage = doc.getElementById("btnOpenPage");
+  const btnExportExcel = doc.getElementById("btnExportExcel");
 
   const tabButtons = {
-    mobile_country: document.getElementById("tabMobileCountry"),
-    fixed_country: document.getElementById("tabFixedCountry"),
-    mobile_city: document.getElementById("tabMobileCity"),
-    fixed_city: document.getElementById("tabFixedCity")
+    mobile_country: doc.getElementById("tabMobileCountry"),
+    fixed_country: doc.getElementById("tabFixedCountry"),
+    mobile_city: doc.getElementById("tabMobileCity"),
+    fixed_city: doc.getElementById("tabFixedCity")
   };
 
   const countBadges = {
-    mobile_country: document.getElementById("countMobileCountry"),
-    fixed_country: document.getElementById("countFixedCountry"),
-    mobile_city: document.getElementById("countMobileCity"),
-    fixed_city: document.getElementById("countFixedCity")
+    mobile_country: doc.getElementById("countMobileCountry"),
+    fixed_country: doc.getElementById("countFixedCountry"),
+    mobile_city: doc.getElementById("countMobileCity"),
+    fixed_city: doc.getElementById("countFixedCity")
   };
 
-  const metricTotalLabel = document.getElementById("metricTotalLabel");
-  const metricTopLabel = document.getElementById("metricTopLabel");
-  const metricTotal = document.getElementById("metricTotal");
-  const metricTop = document.getElementById("metricTop");
-  const metricTopSpeed = document.getElementById("metricTopSpeed");
-  const metricAvg = document.getElementById("metricAvg");
+  const metricTotalLabel = doc.getElementById("metricTotalLabel");
+  const metricTopLabel = doc.getElementById("metricTopLabel");
+  const metricTotal = doc.getElementById("metricTotal");
+  const metricTop = doc.getElementById("metricTop");
+  const metricTopSpeed = doc.getElementById("metricTopSpeed");
+  const metricAvg = doc.getElementById("metricAvg");
 
-  const colLocationHeader = document.getElementById("colLocationHeader");
-  const searchInput = document.getElementById("searchInput");
-  const tableBody = document.getElementById("tableBody");
-  const emptyState = document.getElementById("emptyState");
-  const statusBadge = document.getElementById("statusBadge");
-  const statusText = document.getElementById("statusText");
-  const timestampText = document.getElementById("timestampText");
+  const colLocationHeader = doc.getElementById("colLocationHeader");
+  const searchInput = doc.getElementById("searchInput");
+  const tableBody = doc.getElementById("tableBody");
+  const emptyState = doc.getElementById("emptyState");
+  const statusBadge = doc.getElementById("statusBadge");
+  const statusText = doc.getElementById("statusText");
+  const timestampText = doc.getElementById("timestampText");
 
   function setStatus(type, message) {
     statusBadge.className = `status-badge ${type}`;
@@ -307,16 +340,16 @@ if (typeof document !== "undefined") {
     });
     const blobUrl = URL.createObjectURL(blob);
 
-    const a = document.createElement("a");
+    const a = doc.createElement("a");
     a.style.display = "none";
     a.href = blobUrl;
     a.download = filename;
 
-    document.body.appendChild(a);
+    doc.body.appendChild(a);
     a.click();
 
     setTimeout(() => {
-      document.body.removeChild(a);
+      doc.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     }, 1000);
   }
@@ -361,11 +394,12 @@ if (typeof document !== "undefined") {
     const topRanked = dataset[0];
     if (topRanked) {
       metricTop.textContent = topRanked[meta.locationKey] || "-";
-      metricTopSpeed.textContent =
-        typeof topRanked.download_mbps === "number" ? `${topRanked.download_mbps} Mbps` : "";
+      metricTopSpeed.textContent = Number.isFinite(topRanked.download_mbps)
+        ? `${topRanked.download_mbps} Mbps`
+        : "";
     }
 
-    const validSpeeds = dataset.filter((r) => typeof r.download_mbps === "number");
+    const validSpeeds = dataset.filter((r) => Number.isFinite(r.download_mbps));
     if (validSpeeds.length > 0) {
       const avgSpeed = validSpeeds.reduce((sum, r) => sum + r.download_mbps, 0) / validSpeeds.length;
       metricAvg.textContent = `${avgSpeed.toFixed(2)} Mbps`;
@@ -373,37 +407,7 @@ if (typeof document !== "undefined") {
       metricAvg.textContent = "-";
     }
 
-    tableBody.innerHTML = filtered
-      .map((r) => {
-        let changeClass = "neutral";
-        let changeDisplay = "0";
-        if (r.rank_change && r.rank_change !== "0") {
-          if (r.rank_change.startsWith("+")) {
-            changeClass = "positive";
-            changeDisplay = r.rank_change;
-          } else if (r.rank_change.startsWith("-")) {
-            changeClass = "negative";
-            changeDisplay = r.rank_change;
-          } else {
-            changeDisplay = r.rank_change;
-          }
-        }
-
-        const speedDisplay =
-          typeof r.download_mbps === "number" ? r.download_mbps.toFixed(2) : "-";
-
-        return `
-          <tr>
-            <td class="col-rank">#${r.rank}</td>
-            <td class="col-country">${escapeHtml(r[meta.locationKey] || "")}</td>
-            <td class="col-speed">${speedDisplay}</td>
-            <td class="col-change">
-              <span class="change-badge ${changeClass}">${changeDisplay}</span>
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
+    tableBody.innerHTML = filtered.map((r) => renderRowHtml(r, meta.locationKey)).join("");
   }
 
   async function triggerScrape() {
@@ -419,7 +423,7 @@ if (typeof document !== "undefined") {
 
       if (!tab.url || !tab.url.includes("speedtest.net/global-index")) {
         setStatus("error", "Not on Speedtest page");
-        alert("Please navigate to https://www.speedtest.net/global-index before scraping!");
+        alertFn("Please navigate to https://www.speedtest.net/global-index before scraping!");
         return;
       }
 
@@ -445,13 +449,13 @@ if (typeof document !== "undefined") {
             handleScrapedResult(response.data);
           } else {
             setStatus("error", "Failed");
-            alert(`Scraping failed: ${injectErr.message || "Unknown error"}`);
+            alertFn(`Scraping failed: ${injectErr.message || "Unknown error"}`);
           }
         });
       }
     } catch (err) {
       setStatus("error", "Error");
-      alert(`Scraping error: ${err.message}`);
+      alertFn(`Scraping error: ${err.message}`);
     } finally {
       btnScrape.disabled = false;
     }
@@ -473,8 +477,9 @@ if (typeof document !== "undefined") {
 
     const totalCount = CATEGORY_KEYS.reduce((sum, key) => sum + scrapedData[key].length, 0);
     if (totalCount === 0) {
+      renderTable();
       setStatus("error", "No data found");
-      alert("No data tables found on page. Make sure the page is fully loaded.");
+      alertFn("No data tables found on page. Make sure the page is fully loaded.");
       return;
     }
 
@@ -509,7 +514,7 @@ if (typeof document !== "undefined") {
     renderTable();
   });
 
-  document.addEventListener("DOMContentLoaded", async () => {
+  doc.addEventListener("DOMContentLoaded", async () => {
     if (typeof chrome !== "undefined" && chrome.tabs) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab && tab.url && tab.url.includes("speedtest.net/global-index")) {
@@ -519,6 +524,12 @@ if (typeof document !== "undefined") {
       }
     }
   });
+
+  return { handleScrapedResult, renderTable };
+}
+
+if (typeof document !== "undefined") {
+  initPopupController(document);
 }
 
 if (typeof module !== "undefined" && module.exports) {
@@ -527,6 +538,8 @@ if (typeof module !== "undefined" && module.exports) {
     buildSheetXml,
     buildWorkbookFiles,
     createZip,
-    escapeXml
+    escapeXml,
+    renderRowHtml,
+    initPopupController
   };
 }

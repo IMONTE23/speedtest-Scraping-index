@@ -127,28 +127,37 @@ function titleCaseSlug(slug) {
     .join(" ");
 }
 
+function normalizeLocationText(str) {
+  return String(str || "")
+    .replace(/\s+/g, " ")
+    .replace(/(?:\s*,\s*)+/g, ", ")
+    .replace(/^,\s*|,\s*$/g, "")
+    .trim();
+}
+
 function formatCityLocation(countryCell, link) {
-  const fullText = (countryCell && countryCell.textContent ? countryCell.textContent : "")
-    .replace(/\s+/g, " ")
-    .replace(/\s*,\s*/g, ", ")
-    .trim();
-  const linkText = (link && link.textContent ? link.textContent : "")
-    .replace(/\s+/g, " ")
-    .trim();
+  const fullText = normalizeLocationText(countryCell && countryCell.textContent);
+  const linkText = normalizeLocationText(link && link.textContent);
+
+  if (linkText && fullText.length > linkText.length && fullText.startsWith(linkText)) {
+    const rest = normalizeLocationText(fullText.slice(linkText.length));
+    if (rest) return `${linkText}, ${rest}`;
+  }
 
   if (fullText.includes(",")) {
     return fullText;
   }
 
-  if (linkText && fullText.length > linkText.length && fullText.startsWith(linkText)) {
-    const rest = fullText.slice(linkText.length).replace(/^[,\s]+/, "").trim();
-    if (rest) return `${linkText}, ${rest}`;
-  }
-
   const href = link && link.getAttribute ? link.getAttribute("href") || "" : "";
   const slugMatch = href.match(/\/global-index\/([^/?#]+)\?city=/i);
   if (slugMatch && slugMatch[1].toLowerCase() !== "city") {
-    const countryName = titleCaseSlug(decodeURIComponent(slugMatch[1]));
+    let rawSlug = slugMatch[1];
+    try {
+      rawSlug = decodeURIComponent(rawSlug);
+    } catch (_) {
+      // Keep raw slug if malformed URI component
+    }
+    const countryName = titleCaseSlug(rawSlug);
     if (countryName && linkText) {
       return `${linkText}, ${countryName}`;
     }

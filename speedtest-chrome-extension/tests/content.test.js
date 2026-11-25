@@ -16,6 +16,12 @@ test("formatCityLocation normalizes inline comma, split span without comma, and 
 
   const c3 = makeCell("Bangkok", "Bangkok", "/global-index/thailand?city=Bangkok#mobile");
   assert.equal(formatCityLocation(c3, c3.querySelector("a")), "Bangkok, Thailand");
+
+  const c4 = makeCell("Bangkok, , Thailand", "Bangkok,", "/global-index/thailand?city=Bangkok#mobile");
+  assert.equal(formatCityLocation(c4, c4.querySelector("a")), "Bangkok, Thailand");
+
+  const c5 = makeCell("Washington, D.C.United States", "Washington, D.C.", "/global-index/united-states?city=Washington#mobile");
+  assert.equal(formatCityLocation(c5, c5.querySelector("a")), "Washington, D.C., United States");
 });
 
 test("scrapeSpeedtestData extracts all 4 datasets with yyyy-mm, commas in speed, and sorted ranks", () => {

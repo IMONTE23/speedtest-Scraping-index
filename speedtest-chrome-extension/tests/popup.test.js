@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { getCategoryMeta, buildSheetXml, buildWorkbookFiles, createZip } = require("../popup.js");
+const { getCategoryMeta, buildSheetXml, buildWorkbookFiles, createZip, renderRowHtml, initPopupController } = require("../popup.js");
 
 test("getCategoryMeta switches labels, locationKey, and search placeholder between Country and City tabs", () => {
   assert.deepEqual(getCategoryMeta("mobile_country"), {
@@ -74,4 +74,61 @@ test("popup.html has 4 tabs, Excel (4 Sheets) button, dynamic label IDs, and no 
   for (const id of ["metricTotalLabel", "metricTopLabel", "colLocationHeader"]) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
+});
+
+test("renderRowHtml escapes HTML entities in rank, location, and rank_change", () => {
+  const html = renderRowHtml(
+    { rank: "<script>", city: "Bangkok & <Co>", download_mbps: 100, rank_change: "+1<b>" },
+    "city"
+  );
+  assert.doesNotMatch(html, /<script>|<b>|<Co>/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /Bangkok &amp; &lt;Co&gt;/);
+  assert.match(html, /\+1&lt;b&gt;/);
+});
+
+test("handleScrapedResult resets table UI and disables Excel button when re-scrape returns 0 rows, and styles.css uses flex: 1 1 auto", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf8");
+  assert.match(css, /\.tab-btn\s*\{[^}]*flex:\s*1\s+1\s+auto;/);
+
+  const elements = {};
+  const makeEl = () => ({
+    textContent: "",
+    innerHTML: "",
+    disabled: false,
+    placeholder: "",
+    className: "",
+    style: {},
+    classList: { toggle: () => {} },
+    addEventListener: () => {}
+  });
+  for (const id of [
+    "btnScrape", "btnOpenPage", "btnExportExcel",
+    "tabMobileCountry", "tabFixedCountry", "tabMobileCity", "tabFixedCity",
+    "countMobileCountry", "countFixedCountry", "countMobileCity", "countFixedCity",
+    "metricTotalLabel", "metricTopLabel", "metricTotal", "metricTop", "metricTopSpeed", "metricAvg",
+    "colLocationHeader", "searchInput", "tableBody", "emptyState", "statusBadge", "statusText", "timestampText"
+  ]) {
+    elements[id] = makeEl();
+  }
+  const mockDoc = {
+    getElementById: (id) => elements[id],
+    addEventListener: () => {}
+  };
+  const ctrl = initPopupController(mockDoc, () => {});
+  ctrl.handleScrapedResult({
+    mobile_country: [{ rank: 1, country: "Thailand", download_mbps: 180, rank_change: "0" }],
+    fixed_country: [],
+    mobile_city: [],
+    fixed_city: [],
+    yearMonth: "2026-10"
+  });
+  assert.equal(elements.btnExportExcel.disabled, false);
+  assert.equal(elements.countMobileCountry.textContent, 1);
+
+  // Re-scrape returns 0 rows
+  ctrl.handleScrapedResult({ mobile_country: [], fixed_country: [], mobile_city: [], fixed_city: [] });
+  assert.equal(elements.btnExportExcel.disabled, true);
+  assert.equal(elements.countMobileCountry.textContent, 0);
+  assert.equal(elements.tableBody.innerHTML, "");
 });
