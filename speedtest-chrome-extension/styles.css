@@ -228,8 +228,9 @@ body {
 
 .tab-btn {
   flex: 1;
-  padding: 8px;
-  font-size: 12px;
+  min-width: 0;
+  padding: 6px 4px;
+  font-size: 11px;
   font-weight: 600;
   border: none;
   border-radius: var(--radius-sm);
@@ -240,7 +241,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
+  white-space: nowrap;
 }
 
 .tab-btn.active {
@@ -251,7 +253,7 @@ body {
 
 .tab-btn .badge-count {
   background: rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 10px;
   font-size: 10px;
   color: var(--text-primary);

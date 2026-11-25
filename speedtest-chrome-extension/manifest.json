@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Speedtest Global Index Scraper",
-  "version": "1.0.0",
-  "description": "Scrape and export country-level Mobile & Fixed Broadband rankings from Speedtest Global Index.",
+  "version": "1.1.0",
+  "description": "Scrape and export Country & City Mobile and Fixed Broadband rankings from Speedtest Global Index into a 4-sheet Excel workbook.",
   "permissions": [
     "activeTab",
     "scripting",

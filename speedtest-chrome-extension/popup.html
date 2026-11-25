@@ -14,7 +14,7 @@
         <div class="brand-icon">⚡</div>
         <div class="brand-title">
           <h1>Speedtest Index Scraper</h1>
-          <p>Global Internet Rankings</p>
+          <p>Country &amp; City Internet Rankings</p>
         </div>
       </div>
       <div class="header-right">
@@ -33,37 +33,39 @@
       <button id="btnScrape" class="btn btn-primary">
         <span>⚡</span> Scrape Page
       </button>
-      <button id="btnExportMobile" class="btn btn-success" disabled>
-        <span>📥</span> CSV (Mobile)
-      </button>
-      <button id="btnExportFixed" class="btn btn-success" disabled>
-        <span>📥</span> CSV (Fixed)
-      </button>
       <button id="btnExportExcel" class="btn btn-success" disabled>
-        <span>📊</span> Excel (2 Sheets)
+        <span>📊</span> Excel (4 Sheets)
       </button>
     </div>
 
-    <!-- Tabs -->
+    <!-- Tabs (4 Categories) -->
     <div class="tabs-header">
-      <button id="tabMobile" class="tab-btn active">
-        <span>📱 Mobile Median</span>
-        <span id="countMobile" class="badge-count">0</span>
+      <button id="tabMobileCountry" class="tab-btn active" data-category="mobile_country">
+        <span>📱 Mob Country</span>
+        <span id="countMobileCountry" class="badge-count">0</span>
       </button>
-      <button id="tabFixed" class="tab-btn">
-        <span>🌐 Fixed Broadband</span>
-        <span id="countFixed" class="badge-count">0</span>
+      <button id="tabFixedCountry" class="tab-btn" data-category="fixed_country">
+        <span>🌐 Fix Country</span>
+        <span id="countFixedCountry" class="badge-count">0</span>
+      </button>
+      <button id="tabMobileCity" class="tab-btn" data-category="mobile_city">
+        <span>📱 Mob City</span>
+        <span id="countMobileCity" class="badge-count">0</span>
+      </button>
+      <button id="tabFixedCity" class="tab-btn" data-category="fixed_city">
+        <span>🌐 Fix City</span>
+        <span id="countFixedCity" class="badge-count">0</span>
       </button>
     </div>
 
     <!-- Summary Metrics -->
     <div class="metrics-row">
       <div class="metric-card">
-        <span class="metric-label">Total Countries</span>
+        <span id="metricTotalLabel" class="metric-label">Total Countries</span>
         <span id="metricTotal" class="metric-value">-</span>
       </div>
       <div class="metric-card">
-        <span class="metric-label">#1 Rank Country</span>
+        <span id="metricTopLabel" class="metric-label">#1 Rank Country</span>
         <span id="metricTop" class="metric-value">-</span>
         <span id="metricTopSpeed" class="metric-sub"></span>
       </div>
@@ -85,7 +87,7 @@
         <thead>
           <tr>
             <th class="col-rank">Rank</th>
-            <th class="col-country">Country</th>
+            <th id="colLocationHeader" class="col-country">Country</th>
             <th class="col-speed">Speed (Mbps)</th>
             <th class="col-change">Change</th>
           </tr>
@@ -106,7 +108,7 @@
     <!-- Footer -->
     <footer class="app-footer">
       <span id="timestampText">Not scraped yet</span>
-      <span>v1.0.0</span>
+      <span>v1.1.0</span>
     </footer>
   </div>
 
