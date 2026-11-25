@@ -1,0 +1,150 @@
+rank,city,country,download_mbps,rank_change,yyyy-mm
+1,Abu Dhabi,United Arab Emirates,674.11,0,2026-10
+2,Al-Rayyan,Qatar,590.42,0,2026-10
+3,Dubai,United Arab Emirates,576.12,0,2026-10
+4,Doha,Qatar,526.54,0,2026-10
+5,Kuwait City,Kuwait,383.84,0,2026-10
+6,Rio de Janeiro,Brazil,366.0,+2,2026-10
+7,Belgrade,Serbia,365.63,0,2026-10
+8,Skopje,North Macedonia,355.68,-2,2026-10
+9,São Paulo,Brazil,352.2,+1,2026-10
+10,Zagreb,Croatia,334.54,-1,2026-10
+11,Stockholm,Sweden,330.57,0,2026-10
+12,Seoul,South Korea,327.04,0,2026-10
+13,Sofia,Bulgaria,318.61,0,2026-10
+14,Riyadh,Saudi Arabia,279.46,0,2026-10
+15,Jeddah,Saudi Arabia,268.96,+2,2026-10
+16,Gothenburg,Sweden,259.42,+4,2026-10
+17,Porto,Portugal,258.17,-1,2026-10
+18,Copenhagen,Denmark,252.9,0,2026-10
+19,Oran,Algeria,247.7,+11,2026-10
+20,Oslo,Norway,245.87,+1,2026-10
+21,New York,United States,243.37,+6,2026-10
+22,Muscat,Oman,243.23,+3,2026-10
+23,Lisbon,Portugal,241.61,+3,2026-10
+24,Phnom Penh,Cambodia,236.65,+10,2026-10
+25,Antwerp,Belgium,235.61,-6,2026-10
+26,Istanbul,Türkiye,235.6,-4,2026-10
+27,Warsaw,Poland,233.07,-3,2026-10
+28,Manama,Bahrain,232.86,0,2026-10
+29,Kyiv,Ukraine,225.76,-14,2026-10
+30,Santo Domingo,Dominican Republic,225.61,-7,2026-10
+31,Rotterdam,Netherlands,220.69,-2,2026-10
+32,Busan,South Korea,216.6,+1,2026-10
+33,Paris,France,214.49,-2,2026-10
+34,Los Angeles,United States,207.23,+1,2026-10
+35,Kraków,Poland,203.35,+6,2026-10
+36,Auckland,New Zealand,203.32,+11,2026-10
+37,Lyon,France,202.9,0,2026-10
+38,Riga,Latvia,201.8,+2,2026-10
+39,Vilnius,Lithuania,199.5,-1,2026-10
+40,Helsinki,Finland,195.01,+3,2026-10
+41,Ho Chi Minh City,Vietnam,194.57,+11,2026-10
+42,Kuala Lumpur,Malaysia,193.21,+4,2026-10
+43,Tbilisi,Georgia,193.11,-7,2026-10
+44,Thessaloniki,Greece,192.35,-12,2026-10
+45,Buenos Aires,Argentina,186.49,-1,2026-10
+46,Shanghai,China,183.82,-7,2026-10
+47,Athens,Greece,182.79,-2,2026-10
+48,Bangkok,Thailand,182.53,+2,2026-10
+49,Brussels,Belgium,179.99,0,2026-10
+50,Madrid,Spain,177.82,+3,2026-10
+51,Ankara,Türkiye,176.52,-3,2026-10
+52,Chon Buri,Thailand,169.85,+2,2026-10
+53,Zürich,Switzerland,168.01,+2,2026-10
+54,Amsterdam,Netherlands,167.75,-3,2026-10
+55,Budapest,Hungary,167.53,+6,2026-10
+56,Barcelona,Spain,167.31,+6,2026-10
+57,Rabat,Morocco,166.84,+3,2026-10
+58,Johor Bahru,Malaysia,164.55,-2,2026-10
+59,Algiers Province,Algeria,157.34,+4,2026-10
+60,Beijing,China,157.25,-18,2026-10
+61,Delhi,India,155.48,+3,2026-10
+62,Milan,Italy,153.26,-5,2026-10
+63,Toronto,Canada,149.76,+5,2026-10
+64,Santiago de los Caballeros,Dominican Republic,149.1,-5,2026-10
+65,Dublin,Ireland,148.63,+6,2026-10
+66,Berlin,Germany,147.64,+1,2026-10
+67,Vienna,Austria,143.48,+3,2026-10
+68,Hanoi,Vietnam,143.12,-3,2026-10
+69,Casablanca,Morocco,142.28,+4,2026-10
+70,Melbourne,Australia,142.2,-1,2026-10
+71,Sydney,Australia,140.53,+3,2026-10
+72,Kharkiv,Ukraine,139.53,-14,2026-10
+73,Prague,Czechia,138.02,-7,2026-10
+74,Rome,Italy,136.85,-2,2026-10
+75,Geneva,Switzerland,135.92,+2,2026-10
+76,Córdoba,Argentina,135.09,-1,2026-10
+77,Colombo,Sri Lanka,132.09,-1,2026-10
+78,Hamburg,Germany,132.03,0,2026-10
+79,Guatemala City,Guatemala,131.35,+5,2026-10
+80,Tel Aviv-Yafo,Israel,130.13,+2,2026-10
+80,Montreal,Canada,130.13,+3,2026-10
+82,Taipei,Taiwan,129.48,-2,2026-10
+83,Manchester,United Kingdom,125.37,-4,2026-10
+84,Bucharest,Romania,122.28,-3,2026-10
+85,Osaka,Japan,121.76,+2,2026-10
+86,Astana,Kazakhstan,119.83,0,2026-10
+87,Mumbai,India,116.73,+2,2026-10
+88,Baku,Azerbaijan,115.12,-3,2026-10
+89,London,United Kingdom,113.96,+1,2026-10
+90,Almaty,Kazakhstan,113.72,-2,2026-10
+91,New Taipei,Taiwan,109.15,0,2026-10
+92,Samarkand,Uzbekistan,108.52,+3,2026-10
+93,Santiago,Chile,108.24,-1,2026-10
+94,Bekasi,Indonesia,106.01,+2,2026-10
+95,Lima,Peru,104.49,-2,2026-10
+96,Haifa,Israel,103.9,+7,2026-10
+97,Guayaquil,Ecuador,102.96,+2,2026-10
+98,Chișinău,Moldova,100.17,-4,2026-10
+99,Tashkent,Uzbekistan,98.52,-2,2026-10
+100,Manila,Philippines,98.04,-2,2026-10
+101,Arequipa,Peru,95.37,+3,2026-10
+102,Tunis,Tunisia,92.78,+3,2026-10
+103,San José,Costa Rica,92.65,-1,2026-10
+104,Baghdad,Iraq,92.46,-4,2026-10
+105,Mosul,Iraq,91.35,-4,2026-10
+106,South Jakarta,Indonesia,90.37,+3,2026-10
+107,Tokyo,Japan,89.2,+1,2026-10
+108,Yerevan,Armenia,84.76,-1,2026-10
+109,Cape Town,South Africa,83.71,-3,2026-10
+110,Valparaíso,Chile,78.02,+2,2026-10
+111,Davao City,Philippines,77.74,-1,2026-10
+112,Quito,Ecuador,73.46,+2,2026-10
+113,Lagos,Nigeria,72.12,-2,2026-10
+114,Nairobi,Kenya,69.6,-1,2026-10
+115,Bogotá,Colombia,68.78,+2,2026-10
+116,Johannesburg,South Africa,68.14,-1,2026-10
+117,Medellín,Colombia,66.21,-1,2026-10
+118,Sfax,Tunisia,65.8,0,2026-10
+119,Vientiane,Laos,61.2,+3,2026-10
+120,Amman,Jordan,60.73,-1,2026-10
+121,Zarqa,Jordan,59.2,-1,2026-10
+122,Dhaka,Bangladesh,57.96,-1,2026-10
+123,San Pedro Sula,Honduras,54.42,+5,2026-10
+124,Cairo,Egypt,54.06,+1,2026-10
+125,Mombasa,Kenya,53.01,+1,2026-10
+126,Beirut,Lebanon,52.27,+3,2026-10
+127,Alexandria,Egypt,51.97,-3,2026-10
+128,Chattogram,Bangladesh,51.15,+3,2026-10
+129,Bishkek,Kyrgyzstan,50.95,-6,2026-10
+130,Kano,Nigeria,50.04,-3,2026-10
+131,Guadalajara,Mexico,48.96,-1,2026-10
+132,Dar es Salaam,Tanzania,45.77,+1,2026-10
+133,Mexico City,Mexico,44.35,-1,2026-10
+134,Lahore,Pakistan,43.12,+1,2026-10
+135,Karachi,Pakistan,42.51,-1,2026-10
+136,Mwanza,Tanzania,41.84,+9,2026-10
+137,Tegucigalpa,Honduras,41.41,0,2026-10
+138,Maracaibo,Venezuela,40.6,+2,2026-10
+139,Santa Cruz de la Sierra,Bolivia,40.4,0,2026-10
+140,San Salvador,El Salvador,39.04,+1,2026-10
+141,Caracas,Venezuela,37.95,-3,2026-10
+142,Panama City,Panama,37.58,-6,2026-10
+143,Managua,Nicaragua,33.13,+1,2026-10
+144,La Paz,Bolivia,31.22,+4,2026-10
+145,Asunción,Paraguay,29.2,+1,2026-10
+146,Tripoli,Libya,27.45,+1,2026-10
+147,Kabul,Afghanistan,21.83,+3,2026-10
+148,Misrata,Libya,18.39,+3,2026-10
+149,Herat,Afghanistan,17.97,0,2026-10
