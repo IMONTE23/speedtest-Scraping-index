@@ -1,0 +1,97 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { formatCityLocation, scrapeSpeedtestData } = require("../content.js");
+
+test("formatCityLocation normalizes inline comma, split span without comma, and href slug fallback", () => {
+  const makeCell = (fullText, linkText, href) => ({
+    textContent: fullText,
+    querySelector: () => ({ textContent: linkText, getAttribute: () => href })
+  });
+
+  const c1 = makeCell("  Bangkok ,  Thailand \n", "Bangkok", "/global-index/thailand?city=Bangkok#fixed");
+  assert.equal(formatCityLocation(c1, c1.querySelector("a")), "Bangkok, Thailand");
+
+  const c2 = makeCell("Abu Dhabi   United Arab Emirates", "Abu Dhabi", "/global-index/united-arab-emirates?city=Abu+Dhabi#mobile");
+  assert.equal(formatCityLocation(c2, c2.querySelector("a")), "Abu Dhabi, United Arab Emirates");
+
+  const c3 = makeCell("Bangkok", "Bangkok", "/global-index/thailand?city=Bangkok#mobile");
+  assert.equal(formatCityLocation(c3, c3.querySelector("a")), "Bangkok, Thailand");
+});
+
+test("scrapeSpeedtestData extracts all 4 datasets with yyyy-mm, commas in speed, and sorted ranks", () => {
+  const makeRow = ({ rank, href, linkText, cellText, speed, changeText, neutral = false }) => ({
+    querySelector: (sel) => {
+      if (sel === "td.country") {
+        const a = {
+          textContent: linkText,
+          getAttribute: (attr) => (attr === "href" ? href : "")
+        };
+        return { textContent: cellText ?? linkText, querySelector: (s) => (s === "a" ? a : null) };
+      }
+      if (sel === "td.actual-rank") return { textContent: String(rank) };
+      if (sel === "td.speed") return { textContent: String(speed) };
+      if (sel === "td.rank-change") {
+        return {
+          querySelector: () => ({
+            textContent: changeText,
+            classList: { contains: (cls) => cls === "neutral" && neutral }
+          })
+        };
+      }
+      return null;
+    }
+  });
+
+  const mobileContainer = {
+    querySelectorAll: () => [
+      makeRow({ rank: "2", href: "/global-index/qatar#mobile", linkText: "Qatar", speed: "554.73", changeText: "+1" }),
+      makeRow({ rank: "1", href: "/global-index/united-arab-emirates#mobile", linkText: "United Arab Emirates", speed: "1,045.20", changeText: "-", neutral: true }),
+      makeRow({ rank: "1", href: "/global-index/united-arab-emirates?city=Abu+Dhabi#mobile", linkText: "Abu Dhabi", cellText: "Abu Dhabi, United Arab Emirates", speed: "674.22", changeText: "-", neutral: true })
+    ]
+  };
+  const fixedContainer = {
+    querySelectorAll: () => [
+      makeRow({ rank: "1", href: "/global-index/singapore#fixed", linkText: "Singapore", speed: "410.80", changeText: "0", neutral: true }),
+      makeRow({ rank: "7", href: "/global-index/thailand?city=Bangkok#fixed", linkText: "Bangkok", cellText: "Bangkok\nThailand", speed: "323.31", changeText: "+1" })
+    ]
+  };
+
+  global.window = { location: { href: "https://www.speedtest.net/global-index" } };
+  global.document = {
+    title: "Speedtest Global Index",
+    getElementById: (id) => {
+      if (id === "measureLocationId") return { textContent: "October 2026" };
+      if (id === "column-mobileMedian") return mobileContainer;
+      if (id === "column-fixedMedian") return fixedContainer;
+      return null;
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    body: { innerText: "", innerHTML: "" }
+  };
+
+  const res = scrapeSpeedtestData();
+  assert.equal(res.yearMonth, "2026-10");
+  assert.equal(res.mobile_country.length, 2);
+  assert.deepEqual(res.mobile_country[0], {
+    rank: 1,
+    country: "United Arab Emirates",
+    download_mbps: 1045.2,
+    rank_change: "0",
+    "yyyy-mm": "2026-10"
+  });
+  assert.deepEqual(res.mobile_city, [{
+    rank: 1,
+    city: "Abu Dhabi, United Arab Emirates",
+    download_mbps: 674.22,
+    rank_change: "0",
+    "yyyy-mm": "2026-10"
+  }]);
+  assert.deepEqual(res.fixed_city, [{
+    rank: 7,
+    city: "Bangkok, Thailand",
+    download_mbps: 323.31,
+    rank_change: "+1",
+    "yyyy-mm": "2026-10"
+  }]);
+});

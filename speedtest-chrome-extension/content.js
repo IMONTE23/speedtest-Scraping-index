@@ -114,10 +114,54 @@ function parseRankChange(changeCell) {
   return tooltip.textContent.trim();
 }
 
-function extractCountryTable(containerId, linkFragment) {
+function titleCaseSlug(slug) {
+  const minorWords = new Set(["of", "and", "the", "in"]);
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((word, idx) => {
+      const lower = word.toLowerCase();
+      if (idx > 0 && minorWords.has(lower)) return lower;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+}
+
+function formatCityLocation(countryCell, link) {
+  const fullText = (countryCell && countryCell.textContent ? countryCell.textContent : "")
+    .replace(/\s+/g, " ")
+    .replace(/\s*,\s*/g, ", ")
+    .trim();
+  const linkText = (link && link.textContent ? link.textContent : "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (fullText.includes(",")) {
+    return fullText;
+  }
+
+  if (linkText && fullText.length > linkText.length && fullText.startsWith(linkText)) {
+    const rest = fullText.slice(linkText.length).replace(/^[,\s]+/, "").trim();
+    if (rest) return `${linkText}, ${rest}`;
+  }
+
+  const href = link && link.getAttribute ? link.getAttribute("href") || "" : "";
+  const slugMatch = href.match(/\/global-index\/([^/?#]+)\?city=/i);
+  if (slugMatch && slugMatch[1].toLowerCase() !== "city") {
+    const countryName = titleCaseSlug(decodeURIComponent(slugMatch[1]));
+    if (countryName && linkText) {
+      return `${linkText}, ${countryName}`;
+    }
+  }
+
+  return fullText || linkText;
+}
+
+function extractRankingTable(containerId, linkFragment, mode = "country") {
   const container = containerId ? document.getElementById(containerId) : document;
   if (!container) return [];
 
+  const isCityMode = mode === "city";
   const rows = [];
   const trElements = container.querySelectorAll("tr.data-result");
 
@@ -128,8 +172,8 @@ function extractCountryTable(containerId, linkFragment) {
     if (!link) return;
 
     const href = link.getAttribute("href") || "";
-    // Skip city-level rows (contain '?city=')
-    if (href.includes("?city=")) return;
+    const isCityRow = href.includes("?city=");
+    if (isCityMode !== isCityRow) return;
     if (linkFragment && !href.endsWith(linkFragment)) return;
 
     const rankCell = tr.querySelector("td.actual-rank");
@@ -137,20 +181,30 @@ function extractCountryTable(containerId, linkFragment) {
     const speedCell = tr.querySelector("td.speed");
 
     const rawRank = rankCell ? rankCell.textContent.trim() : "";
-    const country = link.textContent.trim();
     const rawSpeed = speedCell ? speedCell.textContent.trim().replace(/,/g, "") : "";
     const change = parseRankChange(changeCell);
 
     const rank = /^\d+$/.test(rawRank) ? parseInt(rawRank, 10) : rawRank;
-    const downloadMbps = rawSpeed ? parseFloat(rawSpeed) : "";
+    const parsedSpeed = rawSpeed ? parseFloat(rawSpeed) : NaN;
+    const downloadMbps = !Number.isNaN(parsedSpeed) ? parsedSpeed : "";
 
-    rows.push({
-      rank: rank,
-      country: country,
-      download_mbps: downloadMbps,
-      rank_change: change,
-      "yyyy-mm": ""
-    });
+    if (isCityMode) {
+      rows.push({
+        rank: rank,
+        city: formatCityLocation(countryCell, link),
+        download_mbps: downloadMbps,
+        rank_change: change,
+        "yyyy-mm": ""
+      });
+    } else {
+      rows.push({
+        rank: rank,
+        country: link.textContent.replace(/\s+/g, " ").trim(),
+        download_mbps: downloadMbps,
+        rank_change: change,
+        "yyyy-mm": ""
+      });
+    }
   });
 
   rows.sort((a, b) => {
@@ -163,26 +217,44 @@ function extractCountryTable(containerId, linkFragment) {
 }
 
 function scrapeSpeedtestData() {
-  const mobileRows = extractCountryTable("column-mobileMedian", "#mobile");
-  const fixedRows = extractCountryTable("column-fixedMedian", "#fixed");
+  const mobileCountryRows = extractRankingTable("column-mobileMedian", "#mobile", "country");
+  const fixedCountryRows = extractRankingTable("column-fixedMedian", "#fixed", "country");
+  const mobileCityRows = extractRankingTable("column-mobileMedian", "#mobile", "city");
+  const fixedCityRows = extractRankingTable("column-fixedMedian", "#fixed", "city");
   const yyyyMm = parseYearMonth();
 
-  mobileRows.forEach((r) => { r["yyyy-mm"] = yyyyMm; });
-  fixedRows.forEach((r) => { r["yyyy-mm"] = yyyyMm; });
+  for (const list of [mobileCountryRows, fixedCountryRows, mobileCityRows, fixedCityRows]) {
+    list.forEach((r) => {
+      r["yyyy-mm"] = yyyyMm;
+    });
+  }
 
   return {
-    mobile: mobileRows,
-    fixed: fixedRows,
+    mobile_country: mobileCountryRows,
+    fixed_country: fixedCountryRows,
+    mobile_city: mobileCityRows,
+    fixed_city: fixedCityRows,
     yearMonth: yyyyMm,
     dataPeriod: yyyyMm,
     scrapedAt: new Date().toISOString(),
-    pageTitle: document.title,
-    url: window.location.href
+    pageTitle: typeof document !== "undefined" ? document.title : "",
+    url: typeof window !== "undefined" && window.location ? window.location.href : ""
   };
 }
 
 // Global exposure for scripting execution
-window.__scrapeSpeedtestData = scrapeSpeedtestData;
+if (typeof window !== "undefined") {
+  window.__scrapeSpeedtestData = scrapeSpeedtestData;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = {
+    formatCityLocation,
+    extractRankingTable,
+    scrapeSpeedtestData,
+    parseYearMonth
+  };
+}
 
 // Listen for popup messages
 if (typeof chrome !== "undefined" && chrome.runtime && chrome.runtime.onMessage) {
