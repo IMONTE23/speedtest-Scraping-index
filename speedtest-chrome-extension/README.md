@@ -1,52 +1,19 @@
 # Speedtest Global Index Scraper - Chrome Extension
 
-Chrome Extension (Manifest V3) for extracting, viewing, and exporting **Country & City** internet speed rankings (**Mobile & Fixed Broadband**) from [Speedtest Global Index](https://www.speedtest.net/global-index).
+Lightweight Chrome Extension (Manifest V3) for 1-click scraping and 4-sheet Excel export of **Country & City** internet speed rankings (**Mobile & Fixed Broadband**) from [Speedtest Global Index](https://www.speedtest.net/global-index).
 
 ## Features
 
-- ⚡ **1-Click Full Scraping**: Extract both Country Speeds and City Speeds directly from your active browser tab in one click (no need to toggle tabs on Speedtest first).
-- 📊 **4-Tab Ranking View**: Switch across **Mobile Country**, **Fixed Country**, **Mobile City**, and **Fixed City** rankings.
-- 🔍 **Real-time Search**: Instant country or city name filtering (`"Bangkok, Thailand"`).
-- 📈 **Rank Change Indicators**: Clear visual badges (`+3` green, `-2` red, `0` gray).
-- 📥 **4-Sheet Excel Export**: Export a single `.xlsx` workbook (`speedtest_DDMMYY.xlsx`) containing 4 sheets: `mobile_country`, `fixed_country`, `mobile_city`, and `fixed_city`.
-- 🎨 **Modern Dark UI**: Designed with glassmorphism and clean typography.
-
----
-
-## How to Install in Google Chrome
-
-1. Open **Google Chrome**.
-2. Navigate to `chrome://extensions` in the address bar.
-3. Enable **Developer mode** toggle in the top-right corner.
-4. Click **Load unpacked** in the top-left corner.
-5. Select the `speedtest-chrome-extension` folder:
-   ```
-   d:\Code\speedtest-Scraping-index\speedtest-chrome-extension
-   ```
-6. The extension **Speedtest Global Index Scraper** is now installed!
-
----
+- ⚡ **Instant On-Demand Scraping**: Runs with `injectImmediately: true` only when clicked (zero background content script overhead on Speedtest.net).
+- 📥 **4-Sheet Excel Export**: Downloads `speedtest_DDMMYY.xlsx` containing:
+  1. `mobile_country` (`rank, country, download_mbps, rank_change, yyyy-mm`)
+  2. `fixed_country` (`rank, country, download_mbps, rank_change, yyyy-mm`)
+  3. `mobile_city` (`rank, city, download_mbps, rank_change, yyyy-mm`)
+  4. `fixed_city` (`rank, city, download_mbps, rank_change, yyyy-mm`)
+- 🪶 **Minimal UI**: Only **Scrape Page** and **Excel** buttons — no heavy table rendering or lag.
 
 ## How to Use
 
-1. Go to [https://www.speedtest.net/global-index](https://www.speedtest.net/global-index).
-2. Click the **Speedtest Scraper** icon in your Chrome toolbar.
-3. Click **"Scrape Page"**.
-4. Browse rankings across the 4 tabs (`Mob Country`, `Fix Country`, `Mob City`, `Fix City`) or search for a country/city.
-5. Click **"Excel (4 Sheets)"** to download a date-stamped `.xlsx` workbook (`speedtest_DDMMYY.xlsx`).
-
----
-
-## File Structure
-
-```
-speedtest-chrome-extension/
-├── manifest.json       # Manifest V3 extension configuration
-├── popup.html          # Popup window layout (4-tab UI)
-├── popup.js            # Controller script (UI, rendering, 4-sheet XLSX builder)
-├── content.js          # DOM extraction logic (Country & City speeds)
-├── styles.css          # Modern dark styling
-├── tests/              # Node.js built-in unit tests (node --test)
-├── icons/              # Extension icons (16x16, 48x48, 128x128)
-└── README.md           # Instructions
-```
+1. Load unpacked `speedtest-chrome-extension` in `chrome://extensions` (or click **Reload 🔄** if already installed).
+2. Open [https://www.speedtest.net/global-index](https://www.speedtest.net/global-index).
+3. Click **"Scrape Page"**, then click **"Excel"**.

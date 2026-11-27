@@ -1,10 +1,19 @@
 /**
- * Speedtest Global Index Scraper - Popup Controller
+ * Speedtest Global Index Scraper - Minimal Fast Popup Controller
  */
 
-/**
- * Format current date as DDMMYY string (e.g. "030826")
- */
+const CRC32_TABLE = (() => {
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let k = 0; k < 8; k++) {
+      c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    table[i] = c >>> 0;
+  }
+  return table;
+})();
+
 function getDateString() {
   const d = new Date();
   const day = String(d.getDate()).padStart(2, "0");
@@ -13,24 +22,6 @@ function getDateString() {
   return `${day}${month}${year}`;
 }
 
-/**
- * Return UI and schema metadata for a given category key
- */
-function getCategoryMeta(category) {
-  const isCity = String(category || "").endsWith("_city");
-  return {
-    isCity,
-    locationKey: isCity ? "city" : "country",
-    totalLabel: isCity ? "Total Cities" : "Total Countries",
-    topLabel: isCity ? "#1 Rank City" : "#1 Rank Country",
-    headerLabel: isCity ? "City" : "Country",
-    placeholder: isCity ? "Search city or country..." : "Search country name..."
-  };
-}
-
-/**
- * Escape XML special characters
- */
 function escapeXml(val) {
   return String(val ?? "")
     .replace(/&/g, "&amp;")
@@ -40,40 +31,35 @@ function escapeXml(val) {
     .replace(/'/g, "&apos;");
 }
 
-function escapeHtml(str) {
-  return String(str ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/**
- * Build OpenXML worksheet XML from rows with locationKey ('country' or 'city') and yyyy-mm column
- */
 function buildSheetXml(rows, locationKey = "country") {
   const headers = ["rank", locationKey, "download_mbps", "rank_change", "yyyy-mm"];
   const cols = ["A", "B", "C", "D", "E"];
-  const xmlRows = [];
+  const xmlRows = new Array((rows ? rows.length : 0) + 1);
 
-  const headerCells = headers
-    .map((h, i) => `<c r="${cols[i]}1" t="inlineStr"><is><t>${escapeXml(h)}</t></is></c>`)
-    .join("");
-  xmlRows.push(`<row r="1">${headerCells}</row>`);
+  let headerCells = "";
+  for (let i = 0; i < headers.length; i++) {
+    headerCells += `<c r="${cols[i]}1" t="inlineStr"><is><t>${escapeXml(headers[i])}</t></is></c>`;
+  }
+  xmlRows[0] = `<row r="1">${headerCells}</row>`;
 
-  (rows || []).forEach((r, idx) => {
-    const rowNum = idx + 2;
-    const values = [r.rank, r[locationKey] ?? "", r.download_mbps, r.rank_change, r["yyyy-mm"] || ""];
-    const cells = values
-      .map((v, i) => {
+  if (rows) {
+    for (let idx = 0; idx < rows.length; idx++) {
+      const r = rows[idx];
+      const rowNum = idx + 2;
+      const values = [r.rank, r[locationKey] ?? "", r.download_mbps, r.rank_change, r["yyyy-mm"] || ""];
+      let rowCells = "";
+      for (let i = 0; i < 5; i++) {
+        const v = values[i];
         const ref = `${cols[i]}${rowNum}`;
-        if (typeof v === "number" && !Number.isNaN(v)) {
-          return `<c r="${ref}"><v>${v}</v></c>`;
+        if (typeof v === "number" && Number.isFinite(v)) {
+          rowCells += `<c r="${ref}"><v>${v}</v></c>`;
+        } else {
+          rowCells += `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(v)}</t></is></c>`;
         }
-        return `<c r="${ref}" t="inlineStr"><is><t>${escapeXml(v)}</t></is></c>`;
-      })
-      .join("");
-    xmlRows.push(`<row r="${rowNum}">${cells}</row>`);
-  });
+      }
+      xmlRows[idx + 1] = `<row r="${rowNum}">${rowCells}</row>`;
+    }
+  }
 
   return (
     `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
@@ -83,23 +69,14 @@ function buildSheetXml(rows, locationKey = "country") {
   );
 }
 
-/**
- * Compute CRC32 for Uint8Array
- */
 function crc32(bytes) {
   let c = 0xffffffff;
   for (let i = 0; i < bytes.length; i++) {
-    c ^= bytes[i];
-    for (let k = 0; k < 8; k++) {
-      c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
-    }
+    c = CRC32_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
   }
   return (c ^ 0xffffffff) >>> 0;
 }
 
-/**
- * Create an uncompressed ZIP archive (Uint8Array) from a map of filename -> string content
- */
 function createZip(files) {
   const encoder = new TextEncoder();
   const localParts = [];
@@ -166,8 +143,7 @@ function createZip(files) {
   ev.setUint32(16, offset, true);
   ev.setUint16(20, 0, true);
 
-  const totalSize = offset + centralSize + eocd.length;
-  const out = new Uint8Array(totalSize);
+  const out = new Uint8Array(offset + centralSize + eocd.length);
   let pos = 0;
   for (const part of [...localParts, ...centralParts, eocd]) {
     out.set(part, pos);
@@ -176,9 +152,6 @@ function createZip(files) {
   return out;
 }
 
-/**
- * Build OpenXML file map for 4 sheets: mobile_country, fixed_country, mobile_city, fixed_city
- */
 function buildWorkbookFiles(data) {
   const sheets = [
     { name: "mobile_country", rows: data.mobile_country || [], key: "country" },
@@ -231,44 +204,11 @@ function buildWorkbookFiles(data) {
       `</Relationships>`
   };
 
-  sheets.forEach((s, i) => {
-    files[`xl/worksheets/sheet${i + 1}.xml`] = buildSheetXml(s.rows, s.key);
-  });
-
-  return files;
-}
-
-/**
- * Render a single table row with escaped values
- */
-function renderRowHtml(r, locationKey = "country") {
-  let changeClass = "neutral";
-  let changeDisplay = "0";
-  const rawChange = String(r.rank_change ?? "");
-  if (rawChange && rawChange !== "0") {
-    if (rawChange.startsWith("+")) {
-      changeClass = "positive";
-      changeDisplay = rawChange;
-    } else if (rawChange.startsWith("-")) {
-      changeClass = "negative";
-      changeDisplay = rawChange;
-    } else {
-      changeDisplay = rawChange;
-    }
+  for (let i = 0; i < sheets.length; i++) {
+    files[`xl/worksheets/sheet${i + 1}.xml`] = buildSheetXml(sheets[i].rows, sheets[i].key);
   }
 
-  const speedDisplay = Number.isFinite(r.download_mbps) ? r.download_mbps.toFixed(2) : "-";
-
-  return `
-          <tr>
-            <td class="col-rank">#${escapeHtml(r.rank)}</td>
-            <td class="col-country">${escapeHtml(r[locationKey] || "")}</td>
-            <td class="col-speed">${speedDisplay}</td>
-            <td class="col-change">
-              <span class="change-badge ${changeClass}">${escapeHtml(changeDisplay)}</span>
-            </td>
-          </tr>
-        `;
+  return files;
 }
 
 function initPopupController(doc, alertFn = (msg) => alert(msg)) {
@@ -282,41 +222,11 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
     yearMonth: ""
   };
 
-  let activeCategory = "mobile_country";
-  let searchQuery = "";
-
   const btnScrape = doc.getElementById("btnScrape");
-  const btnOpenPage = doc.getElementById("btnOpenPage");
   const btnExportExcel = doc.getElementById("btnExportExcel");
-
-  const tabButtons = {
-    mobile_country: doc.getElementById("tabMobileCountry"),
-    fixed_country: doc.getElementById("tabFixedCountry"),
-    mobile_city: doc.getElementById("tabMobileCity"),
-    fixed_city: doc.getElementById("tabFixedCity")
-  };
-
-  const countBadges = {
-    mobile_country: doc.getElementById("countMobileCountry"),
-    fixed_country: doc.getElementById("countFixedCountry"),
-    mobile_city: doc.getElementById("countMobileCity"),
-    fixed_city: doc.getElementById("countFixedCity")
-  };
-
-  const metricTotalLabel = doc.getElementById("metricTotalLabel");
-  const metricTopLabel = doc.getElementById("metricTopLabel");
-  const metricTotal = doc.getElementById("metricTotal");
-  const metricTop = doc.getElementById("metricTop");
-  const metricTopSpeed = doc.getElementById("metricTopSpeed");
-  const metricAvg = doc.getElementById("metricAvg");
-
-  const colLocationHeader = doc.getElementById("colLocationHeader");
-  const searchInput = doc.getElementById("searchInput");
-  const tableBody = doc.getElementById("tableBody");
-  const emptyState = doc.getElementById("emptyState");
   const statusBadge = doc.getElementById("statusBadge");
   const statusText = doc.getElementById("statusText");
-  const timestampText = doc.getElementById("timestampText");
+  const summaryText = doc.getElementById("summaryText");
 
   function setStatus(type, message) {
     statusBadge.className = `status-badge ${type}`;
@@ -332,8 +242,7 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
 
     const files = buildWorkbookFiles(data);
     const xlsxBytes = createZip(files);
-    const dateStr = getDateString();
-    const filename = `speedtest_${dateStr}.xlsx`;
+    const filename = `speedtest_${getDateString()}.xlsx`;
 
     const blob = new Blob([xlsxBytes], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -354,60 +263,35 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
     }, 1000);
   }
 
-  function renderTable() {
-    const dataset = scrapedData[activeCategory] || [];
-    const meta = getCategoryMeta(activeCategory);
+  function handleScrapedResult(data) {
+    scrapedData.mobile_country = data.mobile_country || [];
+    scrapedData.fixed_country = data.fixed_country || [];
+    scrapedData.mobile_city = data.mobile_city || [];
+    scrapedData.fixed_city = data.fixed_city || [];
+    scrapedData.yearMonth = data.yearMonth || data.dataPeriod || "";
 
-    metricTotalLabel.textContent = meta.totalLabel;
-    metricTopLabel.textContent = meta.topLabel;
-    colLocationHeader.textContent = meta.headerLabel;
-    searchInput.placeholder = meta.placeholder;
-
+    const ym = scrapedData.yearMonth;
     for (const key of CATEGORY_KEYS) {
-      countBadges[key].textContent = (scrapedData[key] || []).length;
+      for (let i = 0; i < scrapedData[key].length; i++) {
+        scrapedData[key][i]["yyyy-mm"] = ym;
+      }
     }
 
-    const hasAnyData = hasAnyScrapedData(scrapedData);
-    btnExportExcel.disabled = !hasAnyData;
+    const totalCount = CATEGORY_KEYS.reduce((sum, key) => sum + scrapedData[key].length, 0);
+    btnExportExcel.disabled = totalCount === 0;
 
-    const filtered = dataset.filter((item) =>
-      String(item[meta.locationKey] || "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
-    );
-
-    if (dataset.length === 0) {
-      tableBody.innerHTML = "";
-      emptyState.style.display = "flex";
-      metricTotal.textContent = "-";
-      metricTop.textContent = "-";
-      metricTopSpeed.textContent = "";
-      metricAvg.textContent = "-";
-      searchInput.disabled = true;
+    if (totalCount === 0) {
+      setStatus("error", "No data");
+      summaryText.textContent = "No ranking tables found on this page.";
+      alertFn("No data tables found on page. Make sure https://www.speedtest.net/global-index is loaded.");
       return;
     }
 
-    emptyState.style.display = "none";
-    searchInput.disabled = false;
-
-    metricTotal.textContent = dataset.length;
-    const topRanked = dataset[0];
-    if (topRanked) {
-      metricTop.textContent = topRanked[meta.locationKey] || "-";
-      metricTopSpeed.textContent = Number.isFinite(topRanked.download_mbps)
-        ? `${topRanked.download_mbps} Mbps`
-        : "";
-    }
-
-    const validSpeeds = dataset.filter((r) => Number.isFinite(r.download_mbps));
-    if (validSpeeds.length > 0) {
-      const avgSpeed = validSpeeds.reduce((sum, r) => sum + r.download_mbps, 0) / validSpeeds.length;
-      metricAvg.textContent = `${avgSpeed.toFixed(2)} Mbps`;
-    } else {
-      metricAvg.textContent = "-";
-    }
-
-    tableBody.innerHTML = filtered.map((r) => renderRowHtml(r, meta.locationKey)).join("");
+    setStatus("ready", `Ready (${totalCount})`);
+    const periodPrefix = ym ? `${ym} · ` : "";
+    summaryText.textContent =
+      `${periodPrefix}Country: ${scrapedData.mobile_country.length}M / ${scrapedData.fixed_country.length}F · ` +
+      `City: ${scrapedData.mobile_city.length}M / ${scrapedData.fixed_city.length}F`;
   }
 
   async function triggerScrape() {
@@ -417,41 +301,23 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-      if (!tab) {
-        throw new Error("No active tab found");
-      }
-
-      if (!tab.url || !tab.url.includes("speedtest.net/global-index")) {
-        setStatus("error", "Not on Speedtest page");
+      if (!tab || !tab.url || !tab.url.includes("speedtest.net/global-index")) {
+        setStatus("error", "Wrong page");
+        summaryText.textContent = "Open https://www.speedtest.net/global-index first.";
         alertFn("Please navigate to https://www.speedtest.net/global-index before scraping!");
         return;
       }
 
-      try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ["content.js"]
-        });
+      const [execResult] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content.js"],
+        injectImmediately: true
+      });
 
-        const [execResult] = await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => (window.__scrapeSpeedtestData ? window.__scrapeSpeedtestData() : null)
-        });
-
-        if (execResult && execResult.result) {
-          handleScrapedResult(execResult.result);
-        } else {
-          throw new Error("Failed to extract DOM data from Speedtest page");
-        }
-      } catch (injectErr) {
-        chrome.tabs.sendMessage(tab.id, { action: "SCRAPE_DATA" }, (response) => {
-          if (response && response.success) {
-            handleScrapedResult(response.data);
-          } else {
-            setStatus("error", "Failed");
-            alertFn(`Scraping failed: ${injectErr.message || "Unknown error"}`);
-          }
-        });
+      if (execResult && execResult.result) {
+        handleScrapedResult(execResult.result);
+      } else {
+        throw new Error("Failed to extract DOM data from Speedtest page");
       }
     } catch (err) {
       setStatus("error", "Error");
@@ -461,71 +327,21 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
     }
   }
 
-  function handleScrapedResult(data) {
-    scrapedData.mobile_country = data.mobile_country || data.mobile || [];
-    scrapedData.fixed_country = data.fixed_country || data.fixed || [];
-    scrapedData.mobile_city = data.mobile_city || [];
-    scrapedData.fixed_city = data.fixed_city || [];
-    scrapedData.yearMonth = data.yearMonth || data.dataPeriod || "";
-
-    const ym = scrapedData.yearMonth;
-    for (const key of CATEGORY_KEYS) {
-      scrapedData[key].forEach((r) => {
-        r["yyyy-mm"] = ym;
-      });
-    }
-
-    const totalCount = CATEGORY_KEYS.reduce((sum, key) => sum + scrapedData[key].length, 0);
-    if (totalCount === 0) {
-      renderTable();
-      setStatus("error", "No data found");
-      alertFn("No data tables found on page. Make sure the page is fully loaded.");
-      return;
-    }
-
-    setStatus("ready", `Scraped (${totalCount})`);
-    const periodLabel = ym ? ` · ${ym}` : "";
-    timestampText.textContent = `Scraped at ${new Date().toLocaleTimeString()}${periodLabel}`;
-    renderTable();
-  }
-
   btnScrape.addEventListener("click", triggerScrape);
-
-  btnOpenPage.addEventListener("click", () => {
-    chrome.tabs.create({ url: "https://www.speedtest.net/global-index" });
-  });
-
-  btnExportExcel.addEventListener("click", () => {
-    downloadExcel(scrapedData);
-  });
-
-  for (const [key, btn] of Object.entries(tabButtons)) {
-    btn.addEventListener("click", () => {
-      activeCategory = key;
-      for (const [otherKey, otherBtn] of Object.entries(tabButtons)) {
-        otherBtn.classList.toggle("active", otherKey === key);
-      }
-      renderTable();
-    });
-  }
-
-  searchInput.addEventListener("input", (e) => {
-    searchQuery = e.target.value;
-    renderTable();
-  });
+  btnExportExcel.addEventListener("click", () => downloadExcel(scrapedData));
 
   doc.addEventListener("DOMContentLoaded", async () => {
     if (typeof chrome !== "undefined" && chrome.tabs) {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab && tab.url && tab.url.includes("speedtest.net/global-index")) {
-        setStatus("ready", "Ready to scrape");
+        setStatus("ready", "Ready");
       } else {
-        setStatus("idle", "Not on Speedtest");
+        setStatus("idle", "Not on page");
       }
     }
   });
 
-  return { handleScrapedResult, renderTable };
+  return { triggerScrape, handleScrapedResult };
 }
 
 if (typeof document !== "undefined") {
@@ -534,12 +350,11 @@ if (typeof document !== "undefined") {
 
 if (typeof module !== "undefined" && module.exports) {
   module.exports = {
-    getCategoryMeta,
     buildSheetXml,
     buildWorkbookFiles,
     createZip,
     escapeXml,
-    renderRowHtml,
+    crc32,
     initPopupController
   };
 }

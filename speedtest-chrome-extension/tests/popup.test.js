@@ -2,26 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { getCategoryMeta, buildSheetXml, buildWorkbookFiles, createZip, renderRowHtml, initPopupController } = require("../popup.js");
-
-test("getCategoryMeta switches labels, locationKey, and search placeholder between Country and City tabs", () => {
-  assert.deepEqual(getCategoryMeta("mobile_country"), {
-    isCity: false,
-    locationKey: "country",
-    totalLabel: "Total Countries",
-    topLabel: "#1 Rank Country",
-    headerLabel: "Country",
-    placeholder: "Search country name..."
-  });
-  assert.deepEqual(getCategoryMeta("fixed_city"), {
-    isCity: true,
-    locationKey: "city",
-    totalLabel: "Total Cities",
-    topLabel: "#1 Rank City",
-    headerLabel: "City",
-    placeholder: "Search city or country..."
-  });
-});
+const { buildSheetXml, buildWorkbookFiles, createZip, initPopupController } = require("../popup.js");
 
 test("buildSheetXml uses 'country' or 'city' header and escapes XML entities", () => {
   const countryXml = buildSheetXml(
@@ -62,73 +43,74 @@ test("buildWorkbookFiles creates valid 4-sheet OpenXML structure even when some 
   assert.equal(zipBytes[1], 0x4b); // 'K'
 });
 
-test("popup.html has 4 tabs, Excel (4 Sheets) button, dynamic label IDs, and no CSV buttons", () => {
+test("popup.html and manifest.json are minimal: only Scrape Page & Excel buttons, no tabs/table/search, no automatic content_scripts", () => {
   const html = fs.readFileSync(path.join(__dirname, "../popup.html"), "utf8");
-  assert.doesNotMatch(html, /btnExportMobile/);
-  assert.doesNotMatch(html, /btnExportFixed/);
+  assert.match(html, /id="btnScrape"/);
   assert.match(html, /id="btnExportExcel"/);
-  assert.match(html, /Excel \(4 Sheets\)/);
-  for (const id of ["tabMobileCountry", "tabFixedCountry", "tabMobileCity", "tabFixedCity"]) {
-    assert.match(html, new RegExp(`id="${id}"`));
+
+  // Must NOT contain any category tabs, table, or search bar
+  for (const removedId of [
+    "tabMobileCountry", "tabFixedCountry", "tabMobileCity", "tabFixedCity",
+    "dataTable", "tableBody", "searchInput", "btnExportMobile", "btnExportFixed"
+  ]) {
+    assert.doesNotMatch(html, new RegExp(`id="${removedId}"`));
   }
-  for (const id of ["metricTotalLabel", "metricTopLabel", "colLocationHeader"]) {
-    assert.match(html, new RegExp(`id="${id}"`));
-  }
+
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
+  assert.equal(manifest.content_scripts, undefined, "manifest should not auto-inject content_scripts on page load");
 });
 
-test("renderRowHtml escapes HTML entities in rank, location, and rank_change", () => {
-  const html = renderRowHtml(
-    { rank: "<script>", city: "Bangkok & <Co>", download_mbps: 100, rank_change: "+1<b>" },
-    "city"
-  );
-  assert.doesNotMatch(html, /<script>|<b>|<Co>/);
-  assert.match(html, /&lt;script&gt;/);
-  assert.match(html, /Bangkok &amp; &lt;Co&gt;/);
-  assert.match(html, /\+1&lt;b&gt;/);
-});
-
-test("handleScrapedResult resets table UI and disables Excel button when re-scrape returns 0 rows, and styles.css uses flex: 1 1 auto", () => {
-  const css = fs.readFileSync(path.join(__dirname, "../styles.css"), "utf8");
-  assert.match(css, /\.tab-btn\s*\{[^}]*flex:\s*1\s+1\s+auto;/);
-
+test("initPopupController uses injectImmediately: true and updates Excel button state on scrape", async () => {
   const elements = {};
   const makeEl = () => ({
     textContent: "",
-    innerHTML: "",
-    disabled: false,
-    placeholder: "",
+    disabled: true,
     className: "",
     style: {},
-    classList: { toggle: () => {} },
-    addEventListener: () => {}
+    addEventListener: function (ev, fn) {
+      this[`on_${ev}`] = fn;
+    }
   });
-  for (const id of [
-    "btnScrape", "btnOpenPage", "btnExportExcel",
-    "tabMobileCountry", "tabFixedCountry", "tabMobileCity", "tabFixedCity",
-    "countMobileCountry", "countFixedCountry", "countMobileCity", "countFixedCity",
-    "metricTotalLabel", "metricTopLabel", "metricTotal", "metricTop", "metricTopSpeed", "metricAvg",
-    "colLocationHeader", "searchInput", "tableBody", "emptyState", "statusBadge", "statusText", "timestampText"
-  ]) {
+  for (const id of ["btnScrape", "btnExportExcel", "statusBadge", "statusText", "summaryText"]) {
     elements[id] = makeEl();
   }
+  elements.btnScrape.disabled = false;
+
   const mockDoc = {
     getElementById: (id) => elements[id],
     addEventListener: () => {}
   };
-  const ctrl = initPopupController(mockDoc, () => {});
-  ctrl.handleScrapedResult({
-    mobile_country: [{ rank: 1, country: "Thailand", download_mbps: 180, rank_change: "0" }],
-    fixed_country: [],
-    mobile_city: [],
-    fixed_city: [],
-    yearMonth: "2026-10"
-  });
-  assert.equal(elements.btnExportExcel.disabled, false);
-  assert.equal(elements.countMobileCountry.textContent, 1);
 
-  // Re-scrape returns 0 rows
+  const executeCalls = [];
+  global.chrome = {
+    tabs: {
+      query: async () => [{ id: 42, url: "https://www.speedtest.net/global-index" }]
+    },
+    scripting: {
+      executeScript: async (opts) => {
+        executeCalls.push(opts);
+        return [{
+          result: {
+            mobile_country: [{ rank: 1, country: "Thailand", download_mbps: 180, rank_change: "0" }],
+            fixed_country: [{ rank: 2, country: "Singapore", download_mbps: 410, rank_change: "0" }],
+            mobile_city: [{ rank: 48, city: "Bangkok, Thailand", download_mbps: 182.53, rank_change: "+2" }],
+            fixed_city: [{ rank: 7, city: "Bangkok, Thailand", download_mbps: 323.31, rank_change: "+1" }],
+            yearMonth: "2026-10"
+          }
+        }];
+      }
+    }
+  };
+
+  const ctrl = initPopupController(mockDoc, () => {});
+  await ctrl.triggerScrape();
+
+  assert.equal(executeCalls.length, 1, "should scrape in a single executeScript call");
+  assert.equal(executeCalls[0].injectImmediately, true, "must use injectImmediately: true to avoid waiting for slow ad scripts");
+  assert.equal(elements.btnExportExcel.disabled, false);
+  assert.match(elements.summaryText.textContent, /2026-10/);
+
+  // Re-scrape with 0 rows disables Excel button
   ctrl.handleScrapedResult({ mobile_country: [], fixed_country: [], mobile_city: [], fixed_city: [] });
   assert.equal(elements.btnExportExcel.disabled, true);
-  assert.equal(elements.countMobileCountry.textContent, 0);
-  assert.equal(elements.tableBody.innerHTML, "");
 });

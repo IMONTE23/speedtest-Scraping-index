@@ -1,6 +1,55 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { formatCityLocation, scrapeSpeedtestData } = require("../content.js");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const { formatCityLocation, scrapeSpeedtestData, parseYearMonth } = require("../content.js");
+
+test("content.js can be evaluated multiple times in the same window context without SyntaxError", () => {
+  const code = fs.readFileSync(path.join(__dirname, "../content.js"), "utf8");
+  const sandbox = {
+    window: { location: { href: "https://www.speedtest.net/global-index" } },
+    document: {
+      title: "Speedtest",
+      getElementById: () => null,
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      body: { textContent: "Updated October 2026" }
+    }
+  };
+  vm.createContext(sandbox);
+  assert.doesNotThrow(() => {
+    vm.runInContext(code, sandbox);
+    vm.runInContext(code, sandbox);
+  });
+  assert.equal(typeof sandbox.window.__scrapeSpeedtestData, "function");
+});
+
+test("parseYearMonth never triggers layout reflow via innerText or serializes innerHTML", () => {
+  let innerTextAccessed = false;
+  let innerHtmlAccessed = false;
+
+  global.document = {
+    getElementById: () => null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    body: {
+      get innerText() {
+        innerTextAccessed = true;
+        return "October 2026";
+      },
+      get innerHTML() {
+        innerHtmlAccessed = true;
+        return "<div>October 2026</div>";
+      },
+      textContent: "October 2026"
+    }
+  };
+
+  assert.equal(parseYearMonth(), "2026-10");
+  assert.equal(innerTextAccessed, false);
+  assert.equal(innerHtmlAccessed, false);
+});
 
 test("formatCityLocation normalizes inline comma, split span without comma, and href slug fallback", () => {
   const makeCell = (fullText, linkText, href) => ({
@@ -24,7 +73,10 @@ test("formatCityLocation normalizes inline comma, split span without comma, and 
   assert.equal(formatCityLocation(c5, c5.querySelector("a")), "Washington, D.C., United States");
 });
 
-test("scrapeSpeedtestData extracts all 4 datasets with yyyy-mm, commas in speed, and sorted ranks", () => {
+test("scrapeSpeedtestData extracts all 4 datasets in a single pass per container", () => {
+  let mobileQueryCount = 0;
+  let fixedQueryCount = 0;
+
   const makeRow = ({ rank, href, linkText, cellText, speed, changeText, neutral = false }) => ({
     querySelector: (sel) => {
       if (sel === "td.country") {
@@ -49,17 +101,23 @@ test("scrapeSpeedtestData extracts all 4 datasets with yyyy-mm, commas in speed,
   });
 
   const mobileContainer = {
-    querySelectorAll: () => [
-      makeRow({ rank: "2", href: "/global-index/qatar#mobile", linkText: "Qatar", speed: "554.73", changeText: "+1" }),
-      makeRow({ rank: "1", href: "/global-index/united-arab-emirates#mobile", linkText: "United Arab Emirates", speed: "1,045.20", changeText: "-", neutral: true }),
-      makeRow({ rank: "1", href: "/global-index/united-arab-emirates?city=Abu+Dhabi#mobile", linkText: "Abu Dhabi", cellText: "Abu Dhabi, United Arab Emirates", speed: "674.22", changeText: "-", neutral: true })
-    ]
+    querySelectorAll: () => {
+      mobileQueryCount++;
+      return [
+        makeRow({ rank: "2", href: "/global-index/qatar#mobile", linkText: "Qatar", speed: "554.73", changeText: "+1" }),
+        makeRow({ rank: "1", href: "/global-index/united-arab-emirates#mobile", linkText: "United Arab Emirates", speed: "1,045.20", changeText: "-", neutral: true }),
+        makeRow({ rank: "1", href: "/global-index/united-arab-emirates?city=Abu+Dhabi#mobile", linkText: "Abu Dhabi", cellText: "Abu Dhabi, United Arab Emirates", speed: "674.22", changeText: "-", neutral: true })
+      ];
+    }
   };
   const fixedContainer = {
-    querySelectorAll: () => [
-      makeRow({ rank: "1", href: "/global-index/singapore#fixed", linkText: "Singapore", speed: "410.80", changeText: "0", neutral: true }),
-      makeRow({ rank: "7", href: "/global-index/thailand?city=Bangkok#fixed", linkText: "Bangkok", cellText: "Bangkok\nThailand", speed: "323.31", changeText: "+1" })
-    ]
+    querySelectorAll: () => {
+      fixedQueryCount++;
+      return [
+        makeRow({ rank: "1", href: "/global-index/singapore#fixed", linkText: "Singapore", speed: "410.80", changeText: "0", neutral: true }),
+        makeRow({ rank: "7", href: "/global-index/thailand?city=Bangkok#fixed", linkText: "Bangkok", cellText: "Bangkok\nThailand", speed: "323.31", changeText: "+1" })
+      ];
+    }
   };
 
   global.window = { location: { href: "https://www.speedtest.net/global-index" } };
@@ -73,10 +131,12 @@ test("scrapeSpeedtestData extracts all 4 datasets with yyyy-mm, commas in speed,
     },
     querySelector: () => null,
     querySelectorAll: () => [],
-    body: { innerText: "", innerHTML: "" }
+    body: { textContent: "" }
   };
 
   const res = scrapeSpeedtestData();
+  assert.equal(mobileQueryCount, 1, "mobile container should only be queried once");
+  assert.equal(fixedQueryCount, 1, "fixed container should only be queried once");
   assert.equal(res.yearMonth, "2026-10");
   assert.equal(res.mobile_country.length, 2);
   assert.deepEqual(res.mobile_country[0], {
