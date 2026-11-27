@@ -4,8 +4,7 @@
   --border-color: #334155;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --accent-green: #22c55e;
-  --accent-red: #ef4444;
+  --text-muted: #64748b;
   --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -16,7 +15,7 @@
 }
 
 body {
-  width: 320px;
+  width: 340px;
   font-family: var(--font-family);
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -35,6 +34,7 @@ body {
   justify-content: space-between;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
+  gap: 8px;
 }
 
 .brand {
@@ -53,22 +53,47 @@ body {
   justify-content: center;
   font-size: 13px;
   color: #fff;
+  flex-shrink: 0;
 }
 
 .brand-title h1 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .brand-title p {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-secondary);
 }
 
-.status-badge {
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-link {
+  font-family: inherit;
   font-size: 11px;
-  padding: 3px 8px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-link:hover {
+  border-color: #38bdf8;
+  background: #334155;
+}
+
+.status-badge {
+  font-size: 10px;
+  padding: 4px 8px;
   border-radius: 12px;
   font-weight: 600;
   display: flex;
@@ -76,6 +101,7 @@ body {
   gap: 5px;
   background: var(--bg-card);
   color: var(--text-secondary);
+  white-space: nowrap;
 }
 
 .status-badge.ready {
@@ -137,9 +163,23 @@ body {
   cursor: not-allowed;
 }
 
+.app-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color);
+}
+
 .summary-text {
   font-size: 11px;
   color: var(--text-secondary);
-  text-align: center;
-  line-height: 1.4;
+  line-height: 1.35;
+}
+
+.version-text {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+  font-family: monospace;
 }

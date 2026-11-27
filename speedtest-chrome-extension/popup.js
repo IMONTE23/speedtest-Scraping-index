@@ -222,6 +222,7 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
     yearMonth: ""
   };
 
+  const btnOpenPage = doc.getElementById("btnOpenPage");
   const btnScrape = doc.getElementById("btnScrape");
   const btnExportExcel = doc.getElementById("btnExportExcel");
   const statusBadge = doc.getElementById("statusBadge");
@@ -327,6 +328,11 @@ function initPopupController(doc, alertFn = (msg) => alert(msg)) {
     }
   }
 
+  if (btnOpenPage) {
+    btnOpenPage.addEventListener("click", () => {
+      chrome.tabs.create({ url: "https://www.speedtest.net/global-index" });
+    });
+  }
   btnScrape.addEventListener("click", triggerScrape);
   btnExportExcel.addEventListener("click", () => downloadExcel(scrapedData));
 

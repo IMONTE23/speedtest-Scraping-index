@@ -43,10 +43,13 @@ test("buildWorkbookFiles creates valid 4-sheet OpenXML structure even when some 
   assert.equal(zipBytes[1], 0x4b); // 'K'
 });
 
-test("popup.html and manifest.json are minimal: only Scrape Page & Excel buttons, no tabs/table/search, no automatic content_scripts", () => {
+test("popup.html and manifest.json are minimal with Open Link button, Scrape, Excel, and git YYYY-MM-DD HH:MM version", () => {
   const html = fs.readFileSync(path.join(__dirname, "../popup.html"), "utf8");
+  assert.match(html, /id="btnOpenPage"/);
   assert.match(html, /id="btnScrape"/);
   assert.match(html, /id="btnExportExcel"/);
+  assert.match(html, /id="versionText"/);
+  assert.match(html, /20\d{2}-\d{2}-\d{2} \d{2}:\d{2}/);
 
   // Must NOT contain any category tabs, table, or search bar
   for (const removedId of [
@@ -58,9 +61,10 @@ test("popup.html and manifest.json are minimal: only Scrape Page & Excel buttons
 
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "../manifest.json"), "utf8"));
   assert.equal(manifest.content_scripts, undefined, "manifest should not auto-inject content_scripts on page load");
+  assert.match(manifest.version_name, /^20\d{2}-\d{2}-\d{2} \d{2}:\d{2}$/);
 });
 
-test("initPopupController uses injectImmediately: true and updates Excel button state on scrape", async () => {
+test("initPopupController opens Speedtest link, uses injectImmediately: true, and updates Excel button state", async () => {
   const elements = {};
   const makeEl = () => ({
     textContent: "",
@@ -71,9 +75,10 @@ test("initPopupController uses injectImmediately: true and updates Excel button 
       this[`on_${ev}`] = fn;
     }
   });
-  for (const id of ["btnScrape", "btnExportExcel", "statusBadge", "statusText", "summaryText"]) {
+  for (const id of ["btnOpenPage", "btnScrape", "btnExportExcel", "statusBadge", "statusText", "summaryText"]) {
     elements[id] = makeEl();
   }
+  elements.btnOpenPage.disabled = false;
   elements.btnScrape.disabled = false;
 
   const mockDoc = {
@@ -82,9 +87,11 @@ test("initPopupController uses injectImmediately: true and updates Excel button 
   };
 
   const executeCalls = [];
+  const createdTabs = [];
   global.chrome = {
     tabs: {
-      query: async () => [{ id: 42, url: "https://www.speedtest.net/global-index" }]
+      query: async () => [{ id: 42, url: "https://www.speedtest.net/global-index" }],
+      create: (opts) => createdTabs.push(opts)
     },
     scripting: {
       executeScript: async (opts) => {
@@ -103,6 +110,11 @@ test("initPopupController uses injectImmediately: true and updates Excel button 
   };
 
   const ctrl = initPopupController(mockDoc, () => {});
+
+  // Test Open Link button
+  elements.btnOpenPage.on_click();
+  assert.deepEqual(createdTabs, [{ url: "https://www.speedtest.net/global-index" }]);
+
   await ctrl.triggerScrape();
 
   assert.equal(executeCalls.length, 1, "should scrape in a single executeScript call");

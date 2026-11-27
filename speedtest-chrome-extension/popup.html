@@ -16,9 +16,14 @@
           <p>Country &amp; City Rankings</p>
         </div>
       </div>
-      <div id="statusBadge" class="status-badge idle">
-        <span class="status-dot"></span>
-        <span id="statusText">Idle</span>
+      <div class="header-right">
+        <button id="btnOpenPage" class="btn-link" title="Open https://www.speedtest.net/global-index">
+          🌐 Open Link
+        </button>
+        <div id="statusBadge" class="status-badge idle">
+          <span class="status-dot"></span>
+          <span id="statusText">Idle</span>
+        </div>
       </div>
     </header>
 
@@ -31,7 +36,10 @@
       </button>
     </div>
 
-    <p id="summaryText" class="summary-text">Click "Scrape Page" on speedtest.net/global-index</p>
+    <footer class="app-footer">
+      <span id="summaryText" class="summary-text">Click "Scrape Page" on speedtest.net/global-index</span>
+      <span id="versionText" class="version-text">v2026-11-27 09:23</span>
+    </footer>
   </div>
 
   <script src="popup.js"></script>
